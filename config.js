@@ -10,7 +10,26 @@ const requiredSportId = {
 
 const requiredBetTypes = ["H/A", "1X2", "AH", "O/U", "DNB", "DC"];
 
+const userQuestions = [
+    {
+        type: 'text',
+        name: 'usernameForParsing',
+        message: 'Имя профиля дла парсинга с Oddsportal'
+    },
+    {
+        type: 'text',
+        name: 'oddsPortalUsername',
+        message: 'Имя пользователя на Oddsportal'
+    },
+    {
+        type: 'text',
+        name: 'oddsPortalPassword',
+        message: 'Пароль на Oddsportal'
+    }
+];
+
 module.exports = {
     requiredSportId,
-    requiredBetTypes
+    requiredBetTypes,
+    userQuestions
 };

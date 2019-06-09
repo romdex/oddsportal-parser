@@ -1,13 +1,15 @@
 const config = require('./config.js');
 const puppeteer = require('puppeteer');
+const prompts = require('prompts');
 const fs = require('fs');
 
 (async () => {
-    const oddsPortalProfile = 'https://www.oddsportal.com/profile/alex8716/my-predictions/next/';
+    const userResponse = await prompts(config.userQuestions);
 
+    const oddsPortalProfile = `https://www.oddsportal.com/profile/${userResponse.usernameForParsing}/my-predictions/next/`;
     const oddsPortalLogin = 'https://www.oddsportal.com/login/';
-    const oddsPortalUsername = 'romdex';
-    const oddsPortalPassword = '1Wdtnghjv';
+    const oddsPortalUsername = `${userResponse.oddsPortalUsername}`;
+    const oddsPortalPassword = `${userResponse.oddsPortalPassword}`;
     const timeZone = 'https://www.oddsportal.com/set-timezone/31/';
 
     const browser = await puppeteer.launch({headless: false});
@@ -34,7 +36,7 @@ const fs = require('fs');
 
     let result = [];
     for (let i = 2; i <= pages; i++) {
-        await page.goto(`https://www.oddsportal.com/profile/alex8716/my-predictions/next/page/${i}/`, {waitUntil: 'networkidle0'});
+        await page.goto(`https://www.oddsportal.com/profile/${userResponse.usernameForParsing}/my-predictions/next/page/${i}/`, {waitUntil: 'networkidle0'});
         const scrappedData = await page.evaluate((config) => {
             const allSportNames = document.querySelectorAll('a.bfl.sicona');
             const allLeagueLocations = document.querySelectorAll('th.first > a:nth-child(3)');
