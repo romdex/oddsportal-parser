@@ -126,8 +126,12 @@ const fs = require('fs');
             }
         }
         if (result.length) {
-            fs.writeFileSync(`${profilesForParsing[i].trim()}.json`, JSON.stringify(result));
+            if (!fs.existsSync('logs')){
+                fs.mkdirSync('logs');
+            }
+            fs.writeFileSync(`logs/${profilesForParsing[i].trim()}.json`, JSON.stringify(result));
         }
+        console.log(`${profilesForParsing[i].trim()} parsed`);
         await browser.close();
     }
 })();

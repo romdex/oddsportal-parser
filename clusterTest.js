@@ -137,11 +137,13 @@ const {Cluster} = require('puppeteer-cluster');
                 }
             }
             if (result.length) {
-                fs.writeFileSync(`${profilesForParsing[i].trim()}.json`, JSON.stringify(result));
+                if (!fs.existsSync('logs')){
+                    fs.mkdirSync('logs');
+                }
+                fs.writeFileSync(`logs/${profilesForParsing[i].trim()}.json`, JSON.stringify(result));
             }
         });
     }
-
     await cluster.idle();
     await cluster.close();
 })();
