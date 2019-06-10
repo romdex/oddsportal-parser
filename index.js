@@ -6,7 +6,6 @@ const fs = require('fs');
 (async () => {
     const userResponse = await prompts(config.userQuestions);
     const profilesForParsing = userResponse.usernameForParsing.split(',');
-    console.log(profilesForParsing);
 
     for (let i = 0; i < profilesForParsing.length; i++) {
         const oddsPortalProfile = `https://www.oddsportal.com/profile/${profilesForParsing[i].trim()}/my-predictions/next/`;
@@ -18,18 +17,24 @@ const fs = require('fs');
         const browser = await puppeteer.launch({headless: false});
         const page = await browser.newPage();
         // Login
-        await page.goto(oddsPortalLogin, {waitUntil: 'networkidle0'});
+        await page.goto(oddsPortalLogin, {waitUntil: 'domcontentloaded'});
         // Login data
         await page.type('#login-username1', oddsPortalUsername);
         await page.type('#login-password1', oddsPortalPassword);
         await Promise.all([
             page.click('#col-content > div:nth-child(3) > div > form > div:nth-child(3) > button'),
-            page.waitForNavigation({waitUntil: 'networkidle0'})
+            page.waitForNavigation({waitUntil: 'domcontentloaded'})
         ]);
-        // Change time zone
-        await page.goto(timeZone, {waitUntil: 'networkidle0'});
+        // Change time zone if needed
+        const timeZoneCheck = await page.evaluate(() => {
+            const currentTimeZone = document.querySelector('#user-header-timezone-expander > span');
+            return currentTimeZone.textContent.includes('GMT 0');
+        });
+        if (!timeZoneCheck) {
+            await page.goto(timeZone, {waitUntil: 'domcontentloaded'});
+        }
         // Go to Odds Profile
-        await page.goto(oddsPortalProfile, {waitUntil: 'networkidle0'});
+        await page.goto(oddsPortalProfile, {waitUntil: 'domcontentloaded'});
         // Check pagination
         const pages = await page.evaluate(() => {
             if (document.querySelector('#pagination')) {
@@ -39,7 +44,7 @@ const fs = require('fs');
 
         let result = [];
         for (let i = 2; i <= pages; i++) {
-            await page.goto(`${oddsPortalProfile}page/${i}/`, {waitUntil: 'networkidle0'});
+            await page.goto(`${oddsPortalProfile}page/${i}/`, {waitUntil: 'domcontentloaded'});
             const scrappedData = await page.evaluate((config) => {
                 const allSportNames = document.querySelectorAll('a.bfl.sicona');
                 const allLeagueLocations = document.querySelectorAll('th.first > a:nth-child(3)');
@@ -123,5 +128,6 @@ const fs = require('fs');
         if (result.length) {
             fs.writeFileSync(`${profilesForParsing[i].trim()}.json`, JSON.stringify(result));
         }
+        await browser.close();
     }
 })();

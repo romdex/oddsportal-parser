@@ -8,9 +8,15 @@ const {Cluster} = require('puppeteer-cluster');
     const profilesForParsing = userResponse.usernameForParsing.split(',');
 
     const cluster = await Cluster.launch({
-        concurrency: Cluster.CONCURRENCY_PAGE,
-        maxConcurrency: 50,
+        concurrency: Cluster.CONCURRENCY_CONTEXT,
+        maxConcurrency: 20,
         monitor: true,
+        // workerCreationDelay: 100,
+        timeout: 300000
+    });
+
+    cluster.on('taskerror', (err, data) => {
+        console.log(`Error crawling ${data}: ${err.message}`);
     });
 
     for (let i = 0; i < profilesForParsing.length; i++) {
@@ -22,18 +28,24 @@ const {Cluster} = require('puppeteer-cluster');
             const timeZone = 'https://www.oddsportal.com/set-timezone/31/';
 
             // Login
-            await page.goto(oddsPortalLogin, {waitUntil: 'networkidle0'});
+            await page.goto(oddsPortalLogin, {waitUntil: 'load'});
             // Login data
             await page.type('#login-username1', oddsPortalUsername);
             await page.type('#login-password1', oddsPortalPassword);
             await Promise.all([
                 page.click('#col-content > div:nth-child(3) > div > form > div:nth-child(3) > button'),
-                page.waitForNavigation({waitUntil: 'networkidle0'})
+                page.waitForNavigation({waitUntil: 'load'})
             ]);
-            // Change time zone
-            await page.goto(timeZone, {waitUntil: 'networkidle0'});
+            // Change time zone if needed
+            const timeZoneCheck = await page.evaluate(() => {
+                const currentTimeZone = document.querySelector('#user-header-timezone-expander > span');
+                return currentTimeZone.textContent.includes('GMT 0');
+            });
+            if (!timeZoneCheck) {
+                await page.goto(timeZone, {waitUntil: 'domcontentloaded'});
+            }
             // Go to Odds Profile
-            await page.goto(oddsPortalProfile, {waitUntil: 'networkidle0'});
+            await page.goto(oddsPortalProfile, {waitUntil: 'load'});
             // Check pagination
             const pages = await page.evaluate(() => {
                 if (document.querySelector('#pagination')) {
@@ -43,7 +55,7 @@ const {Cluster} = require('puppeteer-cluster');
 
             let result = [];
             for (let i = 2; i <= pages; i++) {
-                await page.goto(`${oddsPortalProfile}page/${i}/`, {waitUntil: 'networkidle0'});
+                await page.goto(`${oddsPortalProfile}page/${i}/`, {waitUntil: 'load'});
                 const scrappedData = await page.evaluate((config) => {
                     const allSportNames = document.querySelectorAll('a.bfl.sicona');
                     const allLeagueLocations = document.querySelectorAll('th.first > a:nth-child(3)');

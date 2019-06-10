@@ -14,7 +14,7 @@ const userQuestions = [
     {
         type: 'text',
         name: 'usernameForParsing',
-        message: 'Имя профиля дла парсинга с Oddsportal'
+        message: 'Введите профили(через запятую) дла парсинга с Oddsportal'
     },
     {
         type: 'text',
@@ -22,7 +22,7 @@ const userQuestions = [
         message: 'Имя пользователя на Oddsportal'
     },
     {
-        type: 'text',
+        type: 'password',
         name: 'oddsPortalPassword',
         message: 'Пароль на Oddsportal'
     }
