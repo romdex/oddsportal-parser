@@ -1,7 +1,7 @@
 const request = require('request');
 const fs = require('fs');
 
-const askPinnacle = async (homeTeam, awayTeam) => {
+const askPinnacle = (homeTeam, awayTeam, sport, callback) => {
     const options = {
         balance: {
             url: 'https://api.pinnacle.com/v1/client/balance',
@@ -10,7 +10,7 @@ const askPinnacle = async (homeTeam, awayTeam) => {
             }
         },
         fixtures: {
-            url: 'https://api.pinnacle.com/v1/fixtures?sportId=29&isLive=0',
+            url: `https://api.pinnacle.com/v1/fixtures?sportId=${sport}&isLive=0`,
             headers: {
                 'Authorization': `Basic QU8xMDUxODk2OlNwZHVmNWd5QA==`
             }    
@@ -20,8 +20,9 @@ const askPinnacle = async (homeTeam, awayTeam) => {
         balance: null,
         currency: null,
         event: null,
-        league: null
-    }
+        league: null,
+        sportId: sport,
+    };
     
     const balanceCallback = (error, response, body) => {
         if (!error && response.statusCode == 200) {
@@ -29,6 +30,7 @@ const askPinnacle = async (homeTeam, awayTeam) => {
             apiResponse.balance = data.availableBalance;
             apiResponse.currency = data.currency; //оно надо вообще?
             console.log(`Current balance: ${data.availableBalance} ${data.currency}`);
+            request(options.fixtures, fixturesCallback);
         } else {
             throw new Error(error);
         }
@@ -45,6 +47,7 @@ const askPinnacle = async (homeTeam, awayTeam) => {
                             apiResponse.league = element.id;
                             // console.log(el);
                             console.log(`* league id: ${apiResponse.league}\n* event id: ${apiResponse.event}`);
+                            callback(apiResponse);
                         }
                     }
                 }
@@ -53,9 +56,7 @@ const askPinnacle = async (homeTeam, awayTeam) => {
             throw new Error(error);
         }
     }
+
     request(options.balance, balanceCallback);
-    await request(options.fixtures, fixturesCallback);
-    return apiResponse; //TODO - как то возвращать объект только после выполнения коллбека fixturesCallback
 }
-console.log(askPinnacle('Brazil', 'Bolivia'));
 module.exports = askPinnacle;
