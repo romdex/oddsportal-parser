@@ -7,6 +7,8 @@ const fs = require('fs');
     const userResponse = await prompts(config.userQuestions);
     const profilesForParsing = userResponse.usernameForParsing.split(',');
 
+    debugger;
+
     for (let i = 0; i < profilesForParsing.length; i++) {
         const oddsPortalProfile = `https://www.oddsportal.com/profile/${profilesForParsing[i].trim()}/my-predictions/next/`;
         const oddsPortalLogin = 'https://www.oddsportal.com/login/';
@@ -42,7 +44,7 @@ const fs = require('fs');
             }
         });
 
-        let result;
+        let result = [];
         if (pages === undefined) {
             const scrappedData = await page.evaluate((config) => {
                 const allSportNames = document.querySelectorAll('a.bfl.sicona');
@@ -121,7 +123,7 @@ const fs = require('fs');
                 return data;
             }, config);
             if (scrappedData.length) {
-                result = scrappedData;
+                result.push(scrappedData);
             }
         } else {
             for (let i = 1; i <= pages; i++) {
@@ -137,7 +139,7 @@ const fs = require('fs');
 
                     let data = [];
                     for (let i = 0; i < allEventTimes.length; i++) {
-                        const sportName = allSportNames[i].textContent;
+                        let sportName = allSportNames[i].textContent;
                         const leagueLocation = allLeagueLocations[i].textContent.trim();
                         const leagueName = allLeagueNames[i].textContent;
                         const [eventDate, eventTime] = allEventTimes[i].innerHTML.split("<br>");
@@ -203,12 +205,13 @@ const fs = require('fs');
                     return data;
                 }, config);
                 if (scrappedData.length) {
-                    result = scrappedData;
+                    result.push(scrappedData);
                 }
             }
         }
 
         if (result.length) {
+            result = result.flat();
             if (!fs.existsSync('logs')){
                 fs.mkdirSync('logs');
             }
