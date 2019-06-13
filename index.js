@@ -42,7 +42,7 @@ const fs = require('fs');
             }
         });
 
-        let result = [];
+        let result;
         if (pages === undefined) {
             const scrappedData = await page.evaluate((config) => {
                 const allSportNames = document.querySelectorAll('a.bfl.sicona');
@@ -121,7 +121,7 @@ const fs = require('fs');
                 return data;
             }, config);
             if (scrappedData.length) {
-                result.push(scrappedData);
+                result = scrappedData;
             }
         } else {
             for (let i = 1; i <= pages; i++) {
@@ -203,7 +203,7 @@ const fs = require('fs');
                     return data;
                 }, config);
                 if (scrappedData.length) {
-                    result.push(scrappedData);
+                    result = scrappedData;
                 }
             }
         }
