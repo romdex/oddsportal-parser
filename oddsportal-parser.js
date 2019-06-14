@@ -229,18 +229,28 @@ const api = require('./pinnacle-api');
             fs.writeFileSync(`logs/${profilesForParsing[i].trim()}.json`, JSON.stringify(result));
         }
         console.log(`${profilesForParsing[i].trim()} parsed`);
+        ////////////
+        //PINNACLE
+        ///////////
         let apiResponse = [];
-        result.forEach(elem => {
-            api(elem.player1, elem.player2, elem.sportId, data => {
+        await result.forEach(elem => {
+            api(elem, data => {
                 apiResponse.push(data);
             });
         });
-        console.log(apiResponse);
+        await console.log(apiResponse);
 
         const pinnacleOptions = {
             loginUrl: 'https://beta.pinnacle.com/en/login',
             username: 'AO1051896',
             password: 'Spduf5gy@',
+        }
+
+        const placeBet = async (page) => {
+            await page.waitForSelector('#stake-field');
+            await page.type('#stake-field', "50");
+            await page.waitForSelector('.place-bets-button');
+            await console.log('READY TO CLICK');
         }
 
         await page.goto(pinnacleOptions.loginUrl, {
@@ -256,102 +266,88 @@ const api = require('./pinnacle-api');
             }),
         ]);
 
-        console.log(result);
-        console.log(apiResponse);
         for (let n = 0; n < apiResponse.length; n++) {
-            await page.goto(`https://beta.pinnacle.com/en/Sports/${apiResponse[n].sportId}/Leagues/${apiResponse[n].league}/Events/${apiResponse[n].event}`);
-                for (let h = 0; h < result.length; h++) {
-                    if (result[h].betType === '1X2') {
-                        if (result[h].pick[0] === 'PICK') {
-                            await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div');
-                            //TODO placeBet();
-                        } else if (result[h].pick[1] === 'PICK') {
-                            await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div');
-                            //TODO placeBet();
-                        } else if (result[h].pick[2] === 'PICK') {
-                            await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1) > ps-line > div');
-                            //TODO placeBet();
-                        } else {
-                            throw new Error(`no valid 1X2 pick found`);
-                        }
-                    }
-
-                    if (result[h].betType.includes('AH')) {
-                        let betValue = result[h].betType.substring(2).trim();
-                        let team;
-
-                        if (result[h].pick[0] === 'PICK') {
-                            team = 1;
-                        } else {
-                            team = 2;
-                        }
-                        
-                        let betBtn = await page.evaluate((betValue, team) => {
-                            let hpdValue;
-                            for (let i = 1; i = 5; i++) {
-                                hpdValue = document.querySelector(`#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerHTML;
-
-                                console.log(`found AH bettable value: ${hpdValue}`);
-    
-                                if (hpdValue === betValue) {
-                                    return `#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div`;
-                                } else {
-                                    throw new Error('no valid betvalue found');
-                                }
-                            }
-                        });
-                        await page.click(betBtn);
-                    }
-
-                    // if (result[h].betType.includes('O/U')) {
-                    //     let betValue = result[h].betType.substring(3).trim();
-                    //     let ouValue = null;
-                    //     let team = null;
-                    //     if (result[h].pick[0] === 'PICK') {
-                    //         team = 1;
-                    //     } else {
-                    //         team = 2;
-                    //     }
-
-                    //     for (let i = 1; i = 5; i++) {
-                    //         ouValue = document.querySelector(`#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerHTML.substring(4).trim();
-                    //         console.log(`found O/U value: ${ouValue}`);
-                    //         if (ouValue === betValue) {
-                    //             page.click(`#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div`);
-                    //         }
-                    //     }
-                    // }
-
-                    // if (result[h].betType === 'DNB') { //TODO зачемто пиннакл присваивает мегауникальный ид контейнеру в зависимости от матча. нужен другой селектор
-                    //     if (result[h].pick[0] === 'PICK') {
-                    //         page.click('#team-contest-999356459 > ps-game-event-contest > div > table > tbody > tr > td:nth-child(1) > ps-contest-line > div');
-                    //         //TODO placeBet();
-                    //     } else if (result[h].pick[1] === 'PICK') {
-                    //         page.click('#team-contest-999356459 > ps-game-event-contest > div > table > tbody > tr > td:nth-child(2) > ps-contest-line > div');
-                    //         //TODO placeBet();
-                    //     } else {
-                    //         // throw new Error(`no valid DNB pick found`);
-                    //     }
-                    // }
-
-                    // if (result[h].betType === 'DC') { //TODO такая же хуйня что и DNB
-                    //     if (result[h].pick[0] === 'PICK') {
-                    //         page.click('#team-contest-1000248867 > ps-game-event-contest > div > table > tbody > tr:nth-child(1) > td:nth-child(1) > ps-contest-line > div');
-                    //     } else if (result[h].pick[1] === 'PICK') {
-                    //         page.click('#team-contest-1000248867 > ps-game-event-contest > div > table > tbody > tr:nth-child(2) > td:nth-child(1) > ps-contest-line > div');
-                    //     } else if (result[h].pick[2] === 'PICK') {
-                    //         page.click('#team-contest-1000248867 > ps-game-event-contest > div > table > tbody > tr:nth-child(1) > td:nth-child(2) > ps-contest-line > div');
-                    //     }
-                    // }
-
+            await Promise.all([
+                page.goto(`https://beta.pinnacle.com/en/Sports/${apiResponse[n].sportId}/Leagues/${apiResponse[n].league}/Events/${apiResponse[n].event}`, {
+                    waitUntil: 'domcontentloaded'
+                }),
+                page.waitForNavigation({
+                    waitUntil: 'domcontentloaded'
+                }),
+            ]);
+            console.log('== CURRENT BET ==');
+            console.log(apiResponse[n]);
+            if (apiResponse[n].betType === '1X2') {
+                if (apiResponse[n].pick[0] === 'PICK') {
+                    await page.waitForSelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div', {
+                        timeout: 10000
+                    });
+                    await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1)', {
+                        delay: 1000
+                    });
+                    // await placeBet(page);
+                } else if (apiResponse[n].pick[1] === 'PICK') {
+                    await page.waitForSelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div', {
+                        timeout: 10000
+                    });
+                    await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1)', {
+                        delay: 1000
+                    });
+                    // await placeBet(page);
+                } else if (apiResponse[n].pick[2] === 'PICK') {
+                    await page.waitForSelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1) > ps-line > div', {
+                        timeout: 10000
+                    });
+                    await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1)', {
+                        delay: 1000
+                    });
+                    // await placeBet(page);
+                } else {
+                    throw new Error(`no valid 1X2 pick found`);
                 }
+            };
+
+            if (apiResponse[n].betType.includes('AH')) {
+                let betValue;
+                let team;
+
+                if (apiResponse[n].pick[0] === 'PICK') {
+                    team = 1;
+                } else {
+                    team = 2;
+                }
+
+                if (apiResponse[n].betType.includes('OT')) { //отрезаем от цифры лишнее
+                    betValue = apiResponse[n].betType.slice(2, -3).trim();
+                    console.log(`betvalue - ${betValue}\nteam - ${team}`);
+                } else {
+                    betValue = apiResponse[n].betType.substring(2).trim();
+                    console.log(`betvalue - ${betValue}\nteam - ${team}`);
+                }
+                await page.waitForSelector('#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(1) > td:nth-child(1) > ps-line > div > div:nth-child(2)');
+                let btnSelector = await page.evaluate((betValue, team) => {
+                    let hpdValue;
+                    for (let i = 1; i < 6; i++) {
+                        console.log(`* looking in:\n #handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`);
+                        hpdValue = document.querySelector(`#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText;
+                        console.log(`found AH bettable value: ${hpdValue}`);
+                        if (hpdValue == betValue) {
+                            return `#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`;
+                        } else {
+                            console.log('no valid betvalue found');
+                            return `ERR`;
+                        }
+                    }
+                }, betValue, team);
+                await console.log(btnSelector);
+                if (await btnSelector !== 'ERR') {
+                    await page.click(btnSelector, {
+                        delay: 100
+                    });
+                    await console.log('success');
+                }
+            }
         }
-
-
-
-
-
-
         // await browser.close();
     }
 })();

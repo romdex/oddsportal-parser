@@ -1,7 +1,7 @@
 const request = require('request');
 const fs = require('fs');
-
-const askPinnacle = (homeTeam, awayTeam, sport, callback) => {
+//(homeTeam, awayTeam, sport, callback)
+const askPinnacle = (resultData, callback) => {
     const options = {
         balance: {
             url: 'https://api.pinnacle.com/v1/client/balance',
@@ -10,7 +10,7 @@ const askPinnacle = (homeTeam, awayTeam, sport, callback) => {
             }
         },
         fixtures: {
-            url: `https://api.pinnacle.com/v1/fixtures?sportId=${sport}&isLive=0`,
+            url: `https://api.pinnacle.com/v1/fixtures?sportId=${resultData.sportId}&isLive=0`,
             headers: {
                 'Authorization': `Basic QU8xMDUxODk2OlNwZHVmNWd5QA==`
             }    
@@ -21,7 +21,12 @@ const askPinnacle = (homeTeam, awayTeam, sport, callback) => {
         currency: null,
         event: null,
         league: null,
-        sportId: sport,
+        sportId: resultData.sportId,
+        leagueName: resultData.leagueName,
+        home: resultData.player1,
+        away: resultData.player2,
+        betType: resultData.betType,
+        pick: resultData.pick,
     };
     
     const balanceCallback = (error, response, body) => {
@@ -41,12 +46,10 @@ const askPinnacle = (homeTeam, awayTeam, sport, callback) => {
             let data = JSON.parse(body);
             data.league.forEach(element => {
                 for (let el of element.events) {
-                    if (el.home.includes(homeTeam) && el.away.includes(awayTeam)) { //фильтруем по имени команд
+                    if (el.home.includes(apiResponse.home) && el.away.includes(apiResponse.away)) { //фильтруем по имени команд
                         if (el.resultingUnit === 'Regular' && !("parentId" in el)) { //оставляем только родительский regular матч
                             apiResponse.event = el.id;
                             apiResponse.league = element.id;
-                            // console.log(el);
-                            console.log(`* league id: ${apiResponse.league}\n* event id: ${apiResponse.event}`);
                             callback(apiResponse);
                         }
                     }
