@@ -3,11 +3,12 @@ const puppeteer = require('puppeteer');
 const prompts = require('prompts');
 const fs = require('fs');
 const api = require('./pinnacle-api');
-// const request = require('request');
 
 (async () => {
     const userResponse = await prompts(config.userQuestions);
     const profilesForParsing = userResponse.usernameForParsing.split(',');
+
+    debugger;
 
     for (let i = 0; i < profilesForParsing.length; i++) {
         const oddsPortalProfile = `https://www.oddsportal.com/profile/${profilesForParsing[i].trim()}/my-predictions/next/`;
@@ -16,22 +17,16 @@ const api = require('./pinnacle-api');
         const oddsPortalPassword = `${userResponse.oddsPortalPassword}`;
         const timeZone = 'https://www.oddsportal.com/set-timezone/31/';
 
-        const browser = await puppeteer.launch({
-            headless: false
-        });
+        const browser = await puppeteer.launch({headless: false});
         const page = await browser.newPage();
         // Login
-        await page.goto(oddsPortalLogin, {
-            waitUntil: 'domcontentloaded'
-        });
+        await page.goto(oddsPortalLogin, {waitUntil: 'domcontentloaded'});
         // Login data
         await page.type('#login-username1', oddsPortalUsername);
         await page.type('#login-password1', oddsPortalPassword);
         await Promise.all([
             page.click('#col-content > div:nth-child(3) > div > form > div:nth-child(3) > button'),
-            page.waitForNavigation({
-                waitUntil: 'domcontentloaded'
-            })
+            page.waitForNavigation({waitUntil: 'domcontentloaded'})
         ]);
         // Change time zone if needed
         const timeZoneCheck = await page.evaluate(() => {
@@ -39,14 +34,10 @@ const api = require('./pinnacle-api');
             return currentTimeZone.textContent.includes('GMT 0');
         });
         if (!timeZoneCheck) {
-            await page.goto(timeZone, {
-                waitUntil: 'domcontentloaded'
-            });
+            await page.goto(timeZone, {waitUntil: 'domcontentloaded'});
         }
         // Go to Odds Profile
-        await page.goto(oddsPortalProfile, {
-            waitUntil: 'domcontentloaded'
-        });
+        await page.goto(oddsPortalProfile, {waitUntil: 'domcontentloaded'});
         // Check pagination
         const pages = await page.evaluate(() => {
             if (document.querySelector('#pagination')) {
@@ -54,7 +45,7 @@ const api = require('./pinnacle-api');
             }
         });
 
-        let result;
+        let result = [];
         if (pages === undefined) {
             const scrappedData = await page.evaluate((config) => {
                 const allSportNames = document.querySelectorAll('a.bfl.sicona');
@@ -133,13 +124,11 @@ const api = require('./pinnacle-api');
                 return data;
             }, config);
             if (scrappedData.length) {
-                result = scrappedData;
+                result.push(scrappedData);
             }
         } else {
             for (let i = 1; i <= pages; i++) {
-                await page.goto(`${oddsPortalProfile}page/${i}/`, {
-                    waitUntil: 'domcontentloaded'
-                });
+                await page.goto(`${oddsPortalProfile}page/${i}/`, {waitUntil: 'domcontentloaded'});
                 const scrappedData = await page.evaluate((config) => {
                     const allSportNames = document.querySelectorAll('a.bfl.sicona');
                     const allLeagueLocations = document.querySelectorAll('th.first > a:nth-child(3)');
@@ -151,7 +140,7 @@ const api = require('./pinnacle-api');
 
                     let data = [];
                     for (let i = 0; i < allEventTimes.length; i++) {
-                        const sportName = allSportNames[i].textContent;
+                        let sportName = allSportNames[i].textContent;
                         const leagueLocation = allLeagueLocations[i].textContent.trim();
                         const leagueName = allLeagueNames[i].textContent;
                         const [eventDate, eventTime] = allEventTimes[i].innerHTML.split("<br>");
@@ -217,13 +206,14 @@ const api = require('./pinnacle-api');
                     return data;
                 }, config);
                 if (scrappedData.length) {
-                    result = scrappedData;
+                    result.push(scrappedData);
                 }
             }
         }
 
         if (result.length) {
-            if (!fs.existsSync('logs')) {
+            result = result.flat();
+            if (!fs.existsSync('logs')){
                 fs.mkdirSync('logs');
             }
             fs.writeFileSync(`logs/${profilesForParsing[i].trim()}.json`, JSON.stringify(result));
