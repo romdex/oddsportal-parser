@@ -17,8 +17,8 @@ const askPinnacle = (resultData, callback) => {
         }
     }
     let apiResponse = {
-        balance: null,
-        currency: null,
+        // balance: null,
+        // currency: null,
         event: null,
         league: null,
         sportId: resultData.sportId,
@@ -32,9 +32,9 @@ const askPinnacle = (resultData, callback) => {
     const balanceCallback = (error, response, body) => {
         if (!error && response.statusCode == 200) {
             const data = JSON.parse(body);
-            apiResponse.balance = data.availableBalance;
-            apiResponse.currency = data.currency; //оно надо вообще?
-            console.log(`Current balance: ${data.availableBalance} ${data.currency}`);
+            // apiResponse.balance = data.availableBalance;
+            // apiResponse.currency = data.currency; //оно надо вообще?
+            // console.log(`Current balance: ${data.availableBalance} ${data.currency}`);
             request(options.fixtures, fixturesCallback);
         } else {
             throw new Error(error);
