@@ -314,64 +314,70 @@ const beautify = require("json-beautify");
                 console.log(`event bettable`);
 
                 if (apiResponse[n].betType === '1X2') { //actions for 1х2
-                    if (apiResponse[n].pick[0] === 'PICK') {
-                        let currentOdds = await page.evaluate(() => {
-                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                            pinOdds.trim();
-                            return pinOdds;
-                        });
-                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1)', {
-                            delay: 1000
-                        });
-                        await placeBet(page, currentOdds, apiResponse[n]);
-                    } else if (apiResponse[n].pick[1] === 'PICK') {
-                        let currentOdds = await page.evaluate(() => {
-                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                            pinOdds.trim();
-                            return pinOdds;
-                        });
-                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1)', {
-                            delay: 1000
-                        });
-                        await placeBet(page, currentOdds, apiResponse[n]);
-                    } else if (apiResponse[n].pick[2] === 'PICK') {
-                        let currentOdds = await page.evaluate(() => {
-                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                            pinOdds.trim();
-                            return pinOdds;
-                        });
-                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1)', {
-                            delay: 1000
-                        });
-                        await placeBet(page, currentOdds, apiResponse[n]);
+                    if (await page.$('#moneyline-0') !== null) { //check if possible
+                        if (apiResponse[n].pick[0] === 'PICK') {
+                            let currentOdds = await page.evaluate(() => {
+                                let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                                pinOdds.trim();
+                                return pinOdds;
+                            });
+                            await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1)', {
+                                delay: 1000
+                            });
+                            await placeBet(page, currentOdds, apiResponse[n]);
+                        } else if (apiResponse[n].pick[1] === 'PICK') {
+                            let currentOdds = await page.evaluate(() => {
+                                let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                                pinOdds.trim();
+                                return pinOdds;
+                            });
+                            await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1)', {
+                                delay: 1000
+                            });
+                            await placeBet(page, currentOdds, apiResponse[n]);
+                        } else if (apiResponse[n].pick[2] === 'PICK') {
+                            let currentOdds = await page.evaluate(() => {
+                                let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                                pinOdds.trim();
+                                return pinOdds;
+                            });
+                            await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1)', {
+                                delay: 1000
+                            });
+                            await placeBet(page, currentOdds, apiResponse[n]);
+                        } else {
+                            throw new Error(`no valid 1X2 pick found`);
+                        }
                     } else {
-                        throw new Error(`no valid 1X2 pick found`);
+                        console.log('pinnacle does not offer this type of bet');
                     }
                 };
 
                 if (apiResponse[n].betType === 'H/A' || apiResponse[n].betType === 'DNB') { //actions for Home Away or Draw No Bet (cheat: its not actually placing H/A or DNB bet, needs changes)
-                    if (apiResponse[n].pick[0] === 'PICK') {
-                        let currentOdds = await page.evaluate(() => {
-                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                            pinOdds.trim();
-                            return pinOdds;
-                        });
-                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1)', {
-                            delay: 1000
-                        });
-                        await placeBet(page, currentOdds, apiResponse[n]);
-                    } else if (apiResponse[n].pick[1] === 'PICK') {
-                        let currentOdds = await page.evaluate(() => {
-                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                            pinOdds.trim();
-                            return pinOdds;
-                        });
-                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1)', {
-                            delay: 1000
-                        });
-                        await placeBet(page, currentOdds, apiResponse[n]);
-                    } else {
-                        console.log(`no valid H/A or DNB pick found`);
+                    if (await page.$('#moneyline-0') !== null) {
+                        if (apiResponse[n].pick[0] === 'PICK') {
+                            let currentOdds = await page.evaluate(() => {
+                                let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                                pinOdds.trim();
+                                return pinOdds;
+                            });
+                            await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1)', {
+                                delay: 1000
+                            });
+                            await placeBet(page, currentOdds, apiResponse[n]);
+                        } else if (apiResponse[n].pick[1] === 'PICK') {
+                            let currentOdds = await page.evaluate(() => {
+                                let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                                pinOdds.trim();
+                                return pinOdds;
+                            });
+                            await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1)', {
+                                delay: 1000
+                            });
+                            await placeBet(page, currentOdds, apiResponse[n]);
+                        } else {
+                            console.log(`no valid H/A or DNB pick found`);
+                        }
                     }
                 };
 
