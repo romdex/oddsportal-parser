@@ -302,13 +302,13 @@ const beautify = require("json-beautify");
         ]);
 
         for (let n = 0; n < apiResponse.length; n++) {
+            console.log('== CURRENT BET ==');
+            console.log(apiResponse[n]);
             await Promise.all([
                 page.goto(`https://beta.pinnacle.com/en/Sports/${apiResponse[n].sportId}/Leagues/${apiResponse[n].league}/Events/${apiResponse[n].event}`, {
                     waitUntil: 'networkidle0'
                 })
             ]);
-            console.log('== CURRENT BET ==');
-            console.log(apiResponse[n]);
 
             if (await page.$('body > div.max-1500.clearfix > div > div.main-content > div > div.middleArea > div > div.main-view > div > ps-not-found-page') === null) {
                 console.log(`event bettable`);
