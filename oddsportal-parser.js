@@ -298,176 +298,181 @@ const beautify = require("json-beautify");
             console.log('== CURRENT BET ==');
             console.log(apiResponse[n]);
 
-            if (apiResponse[n].betType === '1X2') { //actions for 1х2
-                if (apiResponse[n].pick[0] === 'PICK') {
-                    let currentOdds = await page.evaluate(() => {
-                        let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                        pinOdds.trim();
-                        return pinOdds;
-                    });
-                    await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1)', {
-                        delay: 1000
-                    });
-                    await placeBet(page, currentOdds, apiResponse[n]);
-                } else if (apiResponse[n].pick[1] === 'PICK') {
-                    let currentOdds = await page.evaluate(() => {
-                        let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                        pinOdds.trim();
-                        return pinOdds;
-                    });
-                    await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1)', {
-                        delay: 1000
-                    });
-                    await placeBet(page, currentOdds, apiResponse[n]);
-                } else if (apiResponse[n].pick[2] === 'PICK') {
-                    let currentOdds = await page.evaluate(() => {
-                        let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                        pinOdds.trim();
-                        return pinOdds;
-                    });
-                    await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1)', {
-                        delay: 1000
-                    });
-                    await placeBet(page, currentOdds, apiResponse[n]);
-                } else {
-                    throw new Error(`no valid 1X2 pick found`);
-                }
-            };
-
-            if (apiResponse[n].betType === 'H/A' || apiResponse[n].betType === 'DNB') { //actions for Home Away or Draw No Bet
-                if (apiResponse[n].pick[0] === 'PICK') {
-                    let currentOdds = await page.evaluate(() => {
-                        let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                        pinOdds.trim();
-                        return pinOdds;
-                    });
-                    await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1)', {
-                        delay: 1000
-                    });
-                    await placeBet(page, currentOdds, apiResponse[n]);
-                } else if (apiResponse[n].pick[1] === 'PICK') {
-                    let currentOdds = await page.evaluate(() => {
-                        let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
-                        pinOdds.trim();
-                        return pinOdds;
-                    });
-                    await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1)', {
-                        delay: 1000
-                    });
-                    await placeBet(page, currentOdds, apiResponse[n]);
-                } else {
-                    console.log(`no valid H/A or DNB pick found`);
-                }
-            };
-
-            if (apiResponse[n].betType.includes('AH')) { //actions for handicap
-                let betValue;
-                let team;
-
-                if (apiResponse[n].pick[0] === 'PICK') {
-                    team = 1;
-                } else {
-                    team = 2;
-                }
-
-                if (apiResponse[n].betType.includes('OT')) { //отрезаем от цифры лишнее
-                    betValue = apiResponse[n].betType.slice(2, -4).trim();
-                    console.log(`betvalue - _${betValue}_\nteam - ${team}`); 
-                } else if (apiResponse[n].betType.includes('Sets')) {
-                    betValue = apiResponse[n].betType.slice(2, -4).trim();
-                    console.log(`betvalue - _${betValue}_\nteam - ${team}`);
-                } else {
-                    betValue = apiResponse[n].betType.substring(2).trim();
-                    console.log(`betvalue - _${betValue}_\nteam - ${team}`);
-                }
-
-                let betBtn = await page.evaluate((betValue, team) => {
-                    let hpdValue;
-                    for (let i = 1; i < 6; i++) { //#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(1) > td:nth-child(1) > ps-line > div > div:nth-child(2)
-                        console.log(`* looking in:\n #handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`);
-                        hpdValue = document.querySelector(`#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText;
-                        console.log(`found AH bettable value: ${hpdValue}`);
-                        if (hpdValue == betValue) {
-                            let hdpOdds = document.querySelector(`#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(4) > span`).innerText;
-                            let response = {
-                                selector: `#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`,
-                                odds: hdpOdds.trim(),
-                            }
-                            return response;
-                        } else {
-                            console.log('no valid betvalue found');
-                            return `ERR`;
-                        }
+            if (await page.$('body > div.max-1500.clearfix > div > div.main-content > div > div.middleArea > div > div.main-view > div > ps-not-found-page') === null) {
+                console.log(`event bettable`);
+    
+                if (apiResponse[n].betType === '1X2') { //actions for 1х2
+                    if (apiResponse[n].pick[0] === 'PICK') {
+                        let currentOdds = await page.evaluate(() => {
+                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                            pinOdds.trim();
+                            return pinOdds;
+                        });
+                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1)', {
+                            delay: 1000
+                        });
+                        await placeBet(page, currentOdds, apiResponse[n]);
+                    } else if (apiResponse[n].pick[1] === 'PICK') {
+                        let currentOdds = await page.evaluate(() => {
+                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                            pinOdds.trim();
+                            return pinOdds;
+                        });
+                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1)', {
+                            delay: 1000
+                        });
+                        await placeBet(page, currentOdds, apiResponse[n]);
+                    } else if (apiResponse[n].pick[2] === 'PICK') {
+                        let currentOdds = await page.evaluate(() => {
+                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                            pinOdds.trim();
+                            return pinOdds;
+                        });
+                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(3) > div:nth-child(1)', {
+                            delay: 1000
+                        });
+                        await placeBet(page, currentOdds, apiResponse[n]);
+                    } else {
+                        throw new Error(`no valid 1X2 pick found`);
                     }
-                }, betValue, team);
-
-                await console.log(betBtn);
-
-                if (await betBtn !== 'ERR') {
-                    await page.click(betBtn.selector, {
-                        delay: 500
-                    });
-                    await console.log('success');
-                    await placeBet(page, betBtn.odds, apiResponse[n]);
-                } else {
-                    console.log(`pinnacle does not offer bet for ${betValue}`);
-                }
-
-            }
-
-            if (apiResponse[n].betType.includes('O/U')) { //actions for over under
-                let betValue;
-                let team;
-
-                if (apiResponse[n].pick[0] === 'PICK') {
-                    team = 1;
-                } else {
-                    team = 2;
-                }
-
-                if (apiResponse[n].betType.includes('OT')) { //отрезаем от цифры лишнее
-                    betValue = apiResponse[n].betType.slice(3, -4).trim();
-                    console.log(`betvalue - _${betValue}_\nteam - ${team}`); 
-                } else if (apiResponse[n].betType.includes('Sets')) {
-                    betValue = apiResponse[n].betType.slice(3, -4).trim();
-                    console.log(`betvalue - _${betValue}_\nteam - ${team}`);
-                } else {
-                    betValue = apiResponse[n].betType.substring(3).trim();
-                    console.log(`betvalue - _${betValue}_\nteam - ${team}`);
-                }
-
-                let betBtn = await page.evaluate((betValue, team) => {
-                    let hpdValue;
-                    for (let i = 1; i < 6; i++) { //#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(1) > td:nth-child(1) > ps-line > div > div:nth-child(2)
-                        console.log(`* looking in:\n #total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`);
-                        hpdValue = document.querySelector(`#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText;
-                        console.log(`found AH bettable value: ${hpdValue}`);
-                        if (hpdValue == betValue) {
-                            let hdpOdds = document.querySelector(`#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(4) > span`).innerText;
-                            let response = {
-                                selector: `#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`,
-                                odds: hdpOdds.trim(),
-                            }
-                            return response;
-                        } else {
-                            console.log('no valid betvalue found');
-                            return `ERR`;
-                        }
+                };
+    
+                if (apiResponse[n].betType === 'H/A' || apiResponse[n].betType === 'DNB') { //actions for Home Away or Draw No Bet
+                    if (apiResponse[n].pick[0] === 'PICK') {
+                        let currentOdds = await page.evaluate(() => {
+                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                            pinOdds.trim();
+                            return pinOdds;
+                        });
+                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1)', {
+                            delay: 1000
+                        });
+                        await placeBet(page, currentOdds, apiResponse[n]);
+                    } else if (apiResponse[n].pick[1] === 'PICK') {
+                        let currentOdds = await page.evaluate(() => {
+                            let pinOdds = document.querySelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span').innerText;
+                            pinOdds.trim();
+                            return pinOdds;
+                        });
+                        await page.click('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(2) > div:nth-child(1)', {
+                            delay: 1000
+                        });
+                        await placeBet(page, currentOdds, apiResponse[n]);
+                    } else {
+                        console.log(`no valid H/A or DNB pick found`);
                     }
-                }, betValue, team);
-
-                await console.log(betBtn);
-
-                if (await betBtn !== 'ERR') {
-                    await page.click(betBtn.selector, {
-                        delay: 500
-                    });
-                    await console.log('success');
-                    await placeBet(page, betBtn.odds, apiResponse[n]);
-                } else {
-                    console.log(`pinnacle does not offer bet for ${betValue}`);
+                };
+    
+                if (apiResponse[n].betType.includes('AH')) { //actions for handicap
+                    let betValue;
+                    let team;
+    
+                    if (apiResponse[n].pick[0] === 'PICK') {
+                        team = 1;
+                    } else {
+                        team = 2;
+                    }
+    
+                    if (apiResponse[n].betType.includes('OT')) { //отрезаем от цифры лишнее
+                        betValue = apiResponse[n].betType.slice(2, -4).trim();
+                        console.log(`betvalue - _${betValue}_\nteam - ${team}`); 
+                    } else if (apiResponse[n].betType.includes('Sets')) {
+                        betValue = apiResponse[n].betType.slice(2, -4).trim();
+                        console.log(`betvalue - _${betValue}_\nteam - ${team}`);
+                    } else {
+                        betValue = apiResponse[n].betType.substring(2).trim();
+                        console.log(`betvalue - _${betValue}_\nteam - ${team}`);
+                    }
+    
+                    let betBtn = await page.evaluate((betValue, team) => {
+                        let hpdValue;
+                        for (let i = 1; i < 6; i++) { //#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(1) > td:nth-child(1) > ps-line > div > div:nth-child(2)
+                            console.log(`* looking in:\n #handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`);
+                            hpdValue = document.querySelector(`#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText;
+                            console.log(`found AH bettable value: ${hpdValue}`);
+                            if (hpdValue == betValue) {
+                                let hdpOdds = document.querySelector(`#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(4) > span`).innerText;
+                                let response = {
+                                    selector: `#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`,
+                                    odds: hdpOdds.trim(),
+                                }
+                                return response;
+                            } else {
+                                console.log('no valid betvalue found');
+                                return `ERR`;
+                            }
+                        }
+                    }, betValue, team);
+    
+                    await console.log(betBtn);
+    
+                    if (await betBtn !== 'ERR') {
+                        await page.click(betBtn.selector, {
+                            delay: 500
+                        });
+                        await console.log('success');
+                        await placeBet(page, betBtn.odds, apiResponse[n]);
+                    } else {
+                        console.log(`pinnacle does not offer bet for ${betValue}`);
+                    }
+    
                 }
-
+    
+                if (apiResponse[n].betType.includes('O/U')) { //actions for over under
+                    let betValue;
+                    let team;
+    
+                    if (apiResponse[n].pick[0] === 'PICK') {
+                        team = 1;
+                    } else {
+                        team = 2;
+                    }
+    
+                    if (apiResponse[n].betType.includes('OT')) { //отрезаем от цифры лишнее
+                        betValue = apiResponse[n].betType.slice(3, -4).trim();
+                        console.log(`betvalue - _${betValue}_\nteam - ${team}`); 
+                    } else if (apiResponse[n].betType.includes('Sets')) {
+                        betValue = apiResponse[n].betType.slice(3, -4).trim();
+                        console.log(`betvalue - _${betValue}_\nteam - ${team}`);
+                    } else {
+                        betValue = apiResponse[n].betType.substring(3).trim();
+                        console.log(`betvalue - _${betValue}_\nteam - ${team}`);
+                    }
+    
+                    let betBtn = await page.evaluate((betValue, team) => {
+                        let hpdValue;
+                        for (let i = 1; i < 6; i++) { //#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(1) > td:nth-child(1) > ps-line > div > div:nth-child(2)
+                            console.log(`* looking in:\n #total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`);
+                            hpdValue = document.querySelector(`#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText;
+                            console.log(`found AH bettable value: ${hpdValue}`);
+                            if (hpdValue == betValue) {
+                                let hdpOdds = document.querySelector(`#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(4) > span`).innerText;
+                                let response = {
+                                    selector: `#total-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`,
+                                    odds: hdpOdds.trim(),
+                                }
+                                return response;
+                            } else {
+                                console.log('no valid betvalue found');
+                                return `ERR`;
+                            }
+                        }
+                    }, betValue, team);
+    
+                    await console.log(betBtn);
+    
+                    if (await betBtn !== 'ERR') {
+                        await page.click(betBtn.selector, {
+                            delay: 500
+                        });
+                        await console.log('success');
+                        await placeBet(page, betBtn.odds, apiResponse[n]);
+                    } else {
+                        console.log(`pinnacle does not offer bet for ${betValue}`);
+                    }
+                }    
+            } else {
+                console.log('event unbettable, skip')
             }
         }
         // await browser.close();

@@ -74,7 +74,7 @@ const askPinnacle = (resultData, callback) => {
                                 apiResponse.league = element.id;
                                 callback(apiResponse);
                             } else {
-                                console.log(`league/${element.id}/event/${el.id} already got placed bet`);
+                                console.log(`league/${element.id}/event/${el.id} already got placed bet, skip`);
                                 callback(null);
                             }
                         }
