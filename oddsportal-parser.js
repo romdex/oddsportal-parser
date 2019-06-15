@@ -227,7 +227,9 @@ const beautify = require("json-beautify");
         let apiResponse = [];
         await result.forEach(elem => {
             api(elem, data => {
-                apiResponse.push(data);
+                if (data !== null) {
+                    apiResponse.push(data);
+                }
             });
         });
         await console.log(apiResponse);
@@ -424,13 +426,13 @@ const beautify = require("json-beautify");
                 }
 
                 if (apiResponse[n].betType.includes('OT')) { //отрезаем от цифры лишнее
-                    betValue = apiResponse[n].betType.slice(2, -4).trim();
+                    betValue = apiResponse[n].betType.slice(3, -4).trim();
                     console.log(`betvalue - _${betValue}_\nteam - ${team}`); 
                 } else if (apiResponse[n].betType.includes('Sets')) {
-                    betValue = apiResponse[n].betType.slice(2, -4).trim();
+                    betValue = apiResponse[n].betType.slice(3, -4).trim();
                     console.log(`betvalue - _${betValue}_\nteam - ${team}`);
                 } else {
-                    betValue = apiResponse[n].betType.substring(2).trim();
+                    betValue = apiResponse[n].betType.substring(3).trim();
                     console.log(`betvalue - _${betValue}_\nteam - ${team}`);
                 }
 
