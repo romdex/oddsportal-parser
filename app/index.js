@@ -150,19 +150,21 @@ const json2xls = require('json2xls');
                         console.log('pinnacle does not offer this type of bet');
                     }
                 };
+
                 //actions for Home Away or Draw No Bet (cheat: its not actually placing H/A or DNB bet, needs changes)
-                if (apiResponse[n].betType === 'H/A' || apiResponse[n].betType === 'DNB') {
-                    await page.waitForSelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span')
-                    if (await page.$('#moneyline-0') !== null) {
-                        if (apiResponse[n].pick[0] === 'PICK') {
-                            await bet1X2(page, apiResponse[n], 1);
-                        } else if (apiResponse[n].pick[1] === 'PICK') {
-                            await bet1X2(page, apiResponse[n], 3);
-                        } else {
-                            console.log(`no valid H/A or DNB pick found`);
-                        }
-                    }
-                };
+                // if (apiResponse[n].betType === 'H/A' || apiResponse[n].betType === 'DNB') {
+                //     await page.waitForSelector('#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(1) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span')
+                //     if (await page.$('#moneyline-0') !== null) {
+                //         if (apiResponse[n].pick[0] === 'PICK') {
+                //             await bet1X2(page, apiResponse[n], 1);
+                //         } else if (apiResponse[n].pick[1] === 'PICK') {
+                //             await bet1X2(page, apiResponse[n], 3);
+                //         } else {
+                //             console.log(`no valid H/A or DNB pick found`);
+                //         }
+                //     }
+                // };
+                
                 //actions for handicap
                 if (apiResponse[n].betType.includes('AH')) { 
                     if (await page.$('#handicap-0') !== null) { //check if handicap bet is possible
