@@ -1,3 +1,5 @@
+const request = require('request');
+
 async function parsingData(page, config, result) {
     const scrappedData = await page.evaluate((config) => {
         const allSportNames = document.querySelectorAll('a.bfl.sicona');
@@ -80,4 +82,165 @@ async function parsingData(page, config, result) {
     }
 }
 
-module.exports = parsingData;
+async function askPinnacle(resultData, callback) {
+    let fromDate;
+    (function setFromDate() {
+        const date = new Date();
+        let month = date.getMonth();
+        let day = date.getDate();
+        month -= 1;
+        day += 2;
+        fromDate = date
+        fromDate.setMonth(month);
+        fromDate.setDate(day);
+        fromDate = fromDate.toISOString().replace(/[.].../, '');
+    })();
+    const currentDate = new Date().toISOString().replace(/[.].../, '');
+    const options = {
+        balance: {
+            url: 'https://api.pinnacle.com/v1/client/balance',
+            headers: {
+                'Authorization': `Basic QU8xMDUxODk2OlNwZHVmNWd5QA==`
+            }
+        },
+        fixtures: {
+            url: `https://api.pinnacle.com/v1/fixtures?sportId=${resultData.sportId}&isLive=0`,
+            headers: {
+                'Authorization': `Basic QU8xMDUxODk2OlNwZHVmNWd5QA==`
+            }
+        },
+        runningBets: {
+            url: `https://api.pinnacle.com/v3/bets?betlist=RUNNING&fromDate=${fromDate}&toDate=${currentDate}`,
+            headers: {
+                'Authorization': `Basic QU8xMDUxODk2OlNwZHVmNWd5QA==`
+            }
+        },
+    }
+    let apiResponse = {
+        // balance: null,
+        // currency: null,
+        event: null,
+        league: null,
+        sportId: resultData.sportId,
+        leagueName: resultData.leagueName,
+        home: resultData.player1,
+        away: resultData.player2,
+        betType: resultData.betType,
+        pick: resultData.pick,
+    };
+
+    let runningBets;
+    const betsCallback = (error, response, body) => {
+        if (!error && response.statusCode == 200) {
+            const data = JSON.parse(body);
+            // apiResponse.balance = data.availableBalance;
+            // apiResponse.currency = data.currency;
+            runningBets = data.straightBets;
+            request(options.fixtures, fixturesCallback);
+        } else {
+            throw new Error(error);
+        }
+    }
+
+    const fixturesCallback = (error, response, body) => {
+        if (!error && response.statusCode == 200) {
+            let data = JSON.parse(body);
+            data.league.forEach(element => {
+                for (let el of element.events) {
+                    if (el.home.includes(apiResponse.home) && el.away.includes(apiResponse.away)) { //фильтруем по имени команд
+                        if (el.resultingUnit === 'Regular' && !("parentId" in el)) { //оставляем только родительский regular матч
+                            let checkBets = runningBets.some(bet => bet.eventId === el.id);
+                            if (!checkBets) {
+                                apiResponse.event = el.id;
+                                apiResponse.league = element.id;
+                                callback(apiResponse);
+                            } else {
+                                console.log(`league/${element.id}/event/${el.id} already got placed bet, skip`);
+                                callback(null);
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            throw new Error(error);
+        }
+    }
+    request(options.runningBets, betsCallback);
+}
+
+async function updateBetSize(userResponse, odds) {
+    const risk = userResponse.risk;
+    const edge = userResponse.edge;
+    const bank = userResponse.bank;
+    console.log(`bank: ${userResponse.bank}\ncurrent odds: ${odds}`);
+
+    let betSizePercent =
+        Math.log10(1 - (1 / (odds / (1 + (edge / 100))))) /
+        Math.log10(Math.pow(10, -risk));
+
+    if (isNaN(betSizePercent)) {
+        betSizePercent = 0;
+    }
+    userResponse.bank -= (betSizePercent * bank);
+    return (betSizePercent * bank).toFixed(1);
+}
+
+async function placeBet(page, odds) {
+    if (parseFloat(odds) >= 1.6) {
+        const betAmount = await updateBetSize(userResponse, odds, apiResponse);
+        await page.waitForSelector('#stake-field');
+        await page.type('#stake-field', betAmount);
+        await page.waitForSelector('.place-bets-button');
+        await console.log(`READY TO BET ${betAmount} RUB`);
+        if (!fs.existsSync('bet-logs')) {
+            fs.mkdirSync('bet-logs');
+        }
+        if (!fs.existsSync(`bet-logs/${profilesForParsing[i].trim()}.json`)) {
+            fs.writeFileSync(`bet-logs/${profilesForParsing[i].trim()}.json`, beautify(apiResponse, null, 2, 100));
+        } else {
+            fs.appendFileSync(`bet-logs/${profilesForParsing[i].trim()}.json`, beautify(apiResponse, null, 2, 100));
+        }
+    } else {
+        await console.log(`odds are lesser than 1.6, skip`);
+    }
+}
+
+async function bet1X2(page, apiResponse, pick) {
+    let currentOdds = await page.evaluate((pick) => {
+        let pinOdds = document.querySelector(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`).innerText;
+        pinOdds.trim();
+        return pinOdds;
+    }, pick);
+    await page.click(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1)`, {
+        delay: 500
+    });
+    await placeBet(page, currentOdds, apiResponse);
+}
+
+function findBetValue(betValue, team, type) { //не асинк потому что передается в page.evaulate
+    let hpdValue;
+    const ROWS = 5;
+    for (let i = 1; i <= ROWS; i++) {
+        hpdValue = parseFloat(document.querySelector(`${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText);
+        console.log(`found AH bettable value: ${hpdValue}`);
+        if (hpdValue === betValue) {
+            let hdpOdds = document.querySelector(`${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(4) > span`).innerText;
+            let response = {
+                selector: `${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`,
+                odds: parseFloat( hdpOdds.trim() ),
+            }
+            return response;
+        } else {
+            console.log('no valid betvalue found');
+        }
+    }
+}
+
+module.exports = {
+    parsingData,
+    askPinnacle,
+    placeBet,
+    bet1X2,
+    findBetValue,
+};

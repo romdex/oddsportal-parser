@@ -25,6 +25,21 @@ const userQuestions = [
         type: 'password',
         name: 'oddsPortalPassword',
         message: 'Пароль на Oddsportal'
+    },
+    {
+        type: 'number',
+        name: 'bank',
+        message: 'Какой банк доступен на пиннакле сейчас'
+    },
+    {
+        type: 'number',
+        name: 'risk',
+        message: 'average bet (%)'
+    },
+    {
+        type: 'number',
+        name: 'edge',
+        message: 'ROI (%)'
     }
 ];
 
