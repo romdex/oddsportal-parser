@@ -169,78 +169,7 @@ async function askPinnacle(resultData, callback) {
     request(options.runningBets, betsCallback);
 }
 
-async function updateBetSize(userResponse, odds) {
-    const risk = userResponse.risk;
-    const edge = userResponse.edge;
-    const bank = userResponse.bank;
-    console.log(`bank: ${userResponse.bank}\ncurrent odds: ${odds}`);
-
-    let betSizePercent =
-        Math.log10(1 - (1 / (odds / (1 + (edge / 100))))) /
-        Math.log10(Math.pow(10, -risk));
-
-    if (isNaN(betSizePercent)) {
-        betSizePercent = 0;
-    }
-    userResponse.bank -= (betSizePercent * bank);
-    return (betSizePercent * bank).toFixed(1);
-}
-
-async function placeBet(page, odds, apiResponse, userResponse) {
-    if (parseFloat(odds) >= 1.6) {
-        const betAmount = await updateBetSize(userResponse, odds, apiResponse);
-        await page.waitForSelector('#stake-field');
-        await page.type('#stake-field', betAmount);
-        await page.waitForSelector('.place-bets-button');
-        await console.log(`READY TO BET ${betAmount} RUB`);
-    } else {
-        await console.log(`odds are lesser than 1.6, skip`);
-    }
-}
-
-async function bet1X2(page, apiResponse, pick) {
-    let currentOdds = await page.evaluate((pick) => {
-        let pinOdds = document.querySelector(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`).innerText;
-        pinOdds.trim();
-        return pinOdds;
-    }, pick);
-    await page.click(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1)`, {
-        delay: 500
-    });
-    await placeBet(page, currentOdds, apiResponse);
-}
-
-async function findBetValue(page, betValue, team, type) {
-    console.log(`looking for selector - /${type} > ps-game-event-singles > div > table/`);
-    if (await page.$(`${type} > ps-game-event-singles > div > table`) !== null) {
-        console.log(`selector found`);
-        return await page.evaluate((betValue, team, type) => {
-            let hpdValue;
-            const tableRows = document.querySelector(`${type} > ps-game-event-singles > div > table`).rows.length - 1; //-1 because they always have 1 hidden row
-            for (let i = 1; i <= tableRows; i++) {
-                hpdValue = parseFloat(document.querySelector(`${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText);
-                console.log(`found AH bettable value: ${hpdValue}`);
-                if (hpdValue === betValue) {
-                    let hdpOdds = document.querySelector(`${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(4) > span`).innerText;
-                    let response = {
-                        selector: `${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`,
-                        odds: parseFloat( hdpOdds.trim() ),
-                    }
-                    return response;
-                } else {
-                    console.log('no valid betvalue found');
-                }
-            }
-        }, [betValue, team, type]);    
-    } else {
-        console.log(`selector not found`);
-    }
-}
-
 module.exports = {
     parsingData,
     askPinnacle,
-    placeBet,
-    bet1X2,
-    findBetValue,
 };

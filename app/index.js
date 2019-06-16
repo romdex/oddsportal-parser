@@ -4,10 +4,7 @@ const fsp = require('fs').promises;
 const beautify = require("json-beautify");
 const {
     parsingData,
-    askPinnacle,
-    placeBet,
-    bet1X2,
-    findBetValue
+    askPinnacle
 } = require('./functions.js');
 const puppeteer = require('puppeteer');
 const json2xls = require('json2xls');
@@ -116,6 +113,46 @@ const json2xls = require('json2xls');
             passField: '#loginMvc > form > div > div.loginContainer > div.loginFormInputs > div:nth-child(3) > div.loginInput > input',
             notFoundContainer: 'body > div.max-1500.clearfix > div > div.main-content > div > div.middleArea > div > div.main-view > div > ps-not-found-page',
         }
+        //FUNCTIONS JS
+        async function updateBetSize(odds) {
+            const risk = userResponse.risk;
+            const edge = userResponse.edge;
+            const bank = userResponse.bank;
+            console.log(`bank: ${userResponse.bank}\ncurrent odds: ${odds}`);
+        
+            let betSizePercent =
+                Math.log10(1 - (1 / (odds / (1 + (edge / 100))))) /
+                Math.log10(Math.pow(10, -risk));
+        
+            if (isNaN(betSizePercent)) {
+                betSizePercent = 0;
+            }
+            userResponse.bank -= (betSizePercent * bank);
+            return (betSizePercent * bank).toFixed(1);
+        }
+        async function placeBet(page, odds) {
+            if (parseFloat(odds) >= 1.6) {
+                const betAmount = await updateBetSize(odds);
+                await page.waitForSelector('#stake-field');
+                await page.type('#stake-field', betAmount);
+                await page.waitForSelector('.place-bets-button');
+                await console.log(`READY TO BET ${betAmount} RUB`);
+            } else {
+                await console.log(`odds are lesser than 1.6, skip`);
+            }
+        }
+        async function bet1X2(page, pick) {
+            let currentOdds = await page.evaluate((pick) => {
+                let pinOdds = document.querySelector(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`).innerText;
+                pinOdds.trim();
+                return pinOdds;
+            }, pick);
+            await page.click(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1)`, {
+                delay: 500
+            });
+            await placeBet(page, currentOdds);
+        }
+
         // Login        
         await page.goto(pinnacle.loginUrl, {
             waitUntil: 'domcontentloaded'
@@ -138,11 +175,11 @@ const json2xls = require('json2xls');
                 if (apiResponse[n].betType === '1X2') {
                     if (await page.$('#moneyline-0') !== null) { //check if possible
                         if (apiResponse[n].pick[0] === 'PICK') {
-                            await bet1X2(page, apiResponse[n], 1);
+                            await bet1X2(page, 1);
                         } else if (apiResponse[n].pick[1] === 'PICK') {
-                            await bet1X2(page, apiResponse[n], 2);
+                            await bet1X2(page, 2);
                         } else if (apiResponse[n].pick[2] === 'PICK') {
-                            await bet1X2(page, apiResponse[n], 3);
+                            await bet1X2(page, 3);
                         } else {
                             throw new Error(`no valid 1X2 pick found`);
                         }
@@ -174,12 +211,32 @@ const json2xls = require('json2xls');
                         console.log(`type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
 
                         //run findBetValue() inside a browser
-                        let betBtn = await findBetValue(page, betValue, team, type);
+                        // let betBtn = await findBetValue(page, betValue, team, type);
+                        let betBtn = await page.evaluate((betValue, team) => {
+                            let hpdValue;
+                            const tableRows = document.querySelector(`#handicap-0 > ps-game-event-singles > div > table`).rows.length - 1; //-1 because they always have 1 hidden row
+                            for (let i = 1; i <= tableRows; i++) {
+                                console.log(`* looking in:\n #handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`);
+                                hpdValue = document.querySelector(`#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText;
+                                console.log(`found AH bettable value: ${hpdValue}`);
+                                if (hpdValue == betValue) {
+                                    let hdpOdds = document.querySelector(`#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(4) > span`).innerText;
+                                    let response = {
+                                        selector: `#handicap-0 > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`,
+                                        odds: hdpOdds.trim(),
+                                    }
+                                    return response;
+                                } else {
+                                    console.log('no valid betvalue found');
+                                }
+                            }
+                        }, betValue, team);
+
                         await console.log(betBtn);
                         await page.click(betBtn.selector, {
                             delay: 500
                         });
-                        await placeBet(page, betBtn.odds, apiResponse[n], userResponse);
+                        await placeBet(page, betBtn.odds);
                     } else {
                         console.log(`pinnacle does not offer handicap bet for this match`);
                     }
@@ -198,7 +255,7 @@ const json2xls = require('json2xls');
                         await page.click(betBtn.selector, {
                             delay: 500
                         });
-                        await placeBet(page, betBtn.odds, apiResponse[n], userResponse);
+                        await placeBet(page, betBtn.odds);
                     } else {
                         console.log(`pinnacle does not offer over under bet for this match`);
                     }
