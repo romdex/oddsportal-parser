@@ -174,12 +174,12 @@ const json2xls = require('json2xls');
                         console.log(`type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
 
                         //run findBetValue() inside a browser
-                        let betBtn = await page.evaluateHandle(findBetValue(betValue, team, type), [betValue, team, type]);
+                        let betBtn = await findBetValue(page, betValue, team, type);
                         await console.log(betBtn);
                         await page.click(betBtn.selector, {
                             delay: 500
                         });
-                        await placeBet(page, betBtn.odds, apiResponse[n]);
+                        await placeBet(page, betBtn.odds, apiResponse[n], userResponse);
                     } else {
                         console.log(`pinnacle does not offer handicap bet for this match`);
                     }
@@ -193,12 +193,12 @@ const json2xls = require('json2xls');
                         console.log(`type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
 
                         //run findBetValue() inside a browser
-                        let betBtn = await page.evaluateHandle(findBetValue(betValue, team, type), betValue, team, type);
+                        let betBtn = await findBetValue(page, betValue, team, type);
                         await console.log(betBtn);
                         await page.click(betBtn.selector, {
                             delay: 500
                         });
-                        await placeBet(page, betBtn.odds, apiResponse[n]);
+                        await placeBet(page, betBtn.odds, apiResponse[n], userResponse);
                     } else {
                         console.log(`pinnacle does not offer over under bet for this match`);
                     }

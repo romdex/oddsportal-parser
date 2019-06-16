@@ -186,21 +186,13 @@ async function updateBetSize(userResponse, odds) {
     return (betSizePercent * bank).toFixed(1);
 }
 
-async function placeBet(page, odds) {
+async function placeBet(page, odds, apiResponse, userResponse) {
     if (parseFloat(odds) >= 1.6) {
         const betAmount = await updateBetSize(userResponse, odds, apiResponse);
         await page.waitForSelector('#stake-field');
         await page.type('#stake-field', betAmount);
         await page.waitForSelector('.place-bets-button');
         await console.log(`READY TO BET ${betAmount} RUB`);
-        if (!fs.existsSync('bet-logs')) {
-            fs.mkdirSync('bet-logs');
-        }
-        if (!fs.existsSync(`bet-logs/${profilesForParsing[i].trim()}.json`)) {
-            fs.writeFileSync(`bet-logs/${profilesForParsing[i].trim()}.json`, beautify(apiResponse, null, 2, 100));
-        } else {
-            fs.appendFileSync(`bet-logs/${profilesForParsing[i].trim()}.json`, beautify(apiResponse, null, 2, 100));
-        }
     } else {
         await console.log(`odds are lesser than 1.6, skip`);
     }
@@ -218,22 +210,30 @@ async function bet1X2(page, apiResponse, pick) {
     await placeBet(page, currentOdds, apiResponse);
 }
 
-function findBetValue(betValue, team, type) { //не асинк потому что передается в page.evaulate
-    let hpdValue;
-    const ROWS = 5;
-    for (let i = 1; i <= ROWS; i++) {
-        hpdValue = parseFloat(document.querySelector(`${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText);
-        console.log(`found AH bettable value: ${hpdValue}`);
-        if (hpdValue === betValue) {
-            let hdpOdds = document.querySelector(`${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(4) > span`).innerText;
-            let response = {
-                selector: `${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`,
-                odds: parseFloat( hdpOdds.trim() ),
+async function findBetValue(page, betValue, team, type) {
+    console.log(`looking for selector - /${type} > ps-game-event-singles > div > table/`);
+    if (await page.$(`${type} > ps-game-event-singles > div > table`) !== null) {
+        console.log(`selector found`);
+        return await page.evaluate((betValue, team, type) => {
+            let hpdValue;
+            const tableRows = document.querySelector(`${type} > ps-game-event-singles > div > table`).rows.length - 1; //-1 because they always have 1 hidden row
+            for (let i = 1; i <= tableRows; i++) {
+                hpdValue = parseFloat(document.querySelector(`${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(2)`).innerText);
+                console.log(`found AH bettable value: ${hpdValue}`);
+                if (hpdValue === betValue) {
+                    let hdpOdds = document.querySelector(`${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team}) > ps-line > div > div:nth-child(4) > span`).innerText;
+                    let response = {
+                        selector: `${type} > ps-game-event-singles > div > table > tbody > tr:nth-child(${i}) > td:nth-child(${team})`,
+                        odds: parseFloat( hdpOdds.trim() ),
+                    }
+                    return response;
+                } else {
+                    console.log('no valid betvalue found');
+                }
             }
-            return response;
-        } else {
-            console.log('no valid betvalue found');
-        }
+        }, [betValue, team, type]);    
+    } else {
+        console.log(`selector not found`);
     }
 }
 
