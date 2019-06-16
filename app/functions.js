@@ -1,4 +1,4 @@
-async function getScrappedData(page, config, result) {
+async function parsingData(page, config, result) {
     const scrappedData = await page.evaluate((config) => {
         const allSportNames = document.querySelectorAll('a.bfl.sicona');
         const allLeagueLocations = document.querySelectorAll('th.first > a:nth-child(3)');
@@ -80,4 +80,4 @@ async function getScrappedData(page, config, result) {
     }
 }
 
-module.exports = getScrappedData;
+module.exports = parsingData;

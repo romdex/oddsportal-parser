@@ -1,9 +1,10 @@
 const config = require('../config.js');
 const prompts = require('prompts');
-const fs = require('fs');
+const fsp = require('fs').promises;
 const beautify = require("json-beautify");
-const getScrappedData = require('./functions.js');
+const parsingData = require('./functions.js');
 const puppeteer = require('puppeteer');
+const json2xls = require('json2xls');
 
 (async () => {
     const userResponse = await prompts(config.userQuestions);
@@ -41,25 +42,36 @@ const puppeteer = require('puppeteer');
         const pages = await page.evaluate(() => {
             if (document.querySelector('#pagination')) {
                 return document.querySelector('#pagination').lastChild.getAttribute('x-page');
+            } else {
+                return false;
             }
         });
 
         let result = [];
-        if (pages === undefined) {
-            await getScrappedData(page, config, result);
+        if (pages === false) {
+            await parsingData(page, config, result);
         } else {
             for (let i = 1; i <= pages; i++) {
                 await page.goto(`${oddsPortalProfile}page/${i}/`, {waitUntil: 'domcontentloaded'});
-                await getScrappedData(page, config, result);
+                await parsingData(page, config, result);
             }
         }
 
         if (result.length) {
-            result = result.flat();
-            if (!fs.existsSync('logs')){
-                fs.mkdirSync('logs');
+            result = await result.flat();
+            const xls = await json2xls(result);
+            try {
+                await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
+                // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+            } catch (e) {
+                if (e.code === 'ENOENT') {
+                    await fsp.mkdir('logs');
+                    await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
+                    // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+                } else {
+                    console.error(e);
+                }
             }
-            fs.writeFileSync(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
         }
         console.log(`${profilesForParsing[i].trim()} parsed`);
         await browser.close();

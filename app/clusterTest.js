@@ -1,8 +1,8 @@
 const config = require('../config.js');
 const prompts = require('prompts');
-const fs = require('fs');
+const fsp = require('fs').promises;
 const beautify = require("json-beautify");
-const getScrappedData = require('./functions.js');
+const parsingData = require('./functions.js');
 const {Cluster} = require('puppeteer-cluster');
 
 (async () => {
@@ -33,13 +33,13 @@ const {Cluster} = require('puppeteer-cluster');
             const timeZone = 'https://www.oddsportal.com/set-timezone/31/';
 
             // Login
-            await page.goto(oddsPortalLogin, {waitUntil: 'load'});
+            await page.goto(oddsPortalLogin, {waitUntil: 'domcontentloaded'});
             // Login data
             await page.type('#login-username1', oddsPortalUsername);
             await page.type('#login-password1', oddsPortalPassword);
             await Promise.all([
                 page.click('#col-content > div:nth-child(3) > div > form > div:nth-child(3) > button'),
-                page.waitForNavigation({waitUntil: 'load'})
+                page.waitForNavigation({waitUntil: 'domcontentloaded'})
             ]);
             // Change time zone if needed
             const timeZoneCheck = await page.evaluate(() => {
@@ -50,7 +50,7 @@ const {Cluster} = require('puppeteer-cluster');
                 await page.goto(timeZone, {waitUntil: 'domcontentloaded'});
             }
             // Go to Odds Profile
-            await page.goto(oddsPortalProfile, {waitUntil: 'load'});
+            await page.goto(oddsPortalProfile, {waitUntil: 'domcontentloaded'});
             // Check pagination
             const pages = await page.evaluate(() => {
                 if (document.querySelector('#pagination')) {
@@ -60,20 +60,26 @@ const {Cluster} = require('puppeteer-cluster');
 
             let result = [];
             if (pages === undefined) {
-                await getScrappedData(page, config, result);
+                await parsingData(page, config, result);
             } else {
                 for (let i = 1; i <= pages; i++) {
                     await page.goto(`${oddsPortalProfile}page/${i}/`, {waitUntil: 'domcontentloaded'});
-                    await getScrappedData(page, config, result);
+                    await parsingData(page, config, result);
                 }
             }
 
             if (result.length) {
-                result = result.flat();
-                if (!fs.existsSync('logs')) {
-                    fs.mkdirSync('logs');
+                result = await result.flat();
+                try {
+                    await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+                } catch (e) {
+                    if (e.code === 'ENOENT') {
+                        await fsp.mkdir('logs');
+                        await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+                    } else {
+                        console.error(e);
+                    }
                 }
-                fs.writeFileSync(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
             }
         });
     }
