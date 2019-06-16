@@ -11,10 +11,10 @@ const {Cluster} = require('puppeteer-cluster');
 
     const cluster = await Cluster.launch({
         concurrency: Cluster.CONCURRENCY_CONTEXT,
-        maxConcurrency: 20,
+        maxConcurrency: 10,
         monitor: true,
         puppeteerOptions: {
-            headless: false
+            headless: true
         },
         // workerCreationDelay: 100,
         timeout: 300000
@@ -37,9 +37,10 @@ const {Cluster} = require('puppeteer-cluster');
             // Login data
             await page.type('#login-username1', oddsPortalUsername);
             await page.type('#login-password1', oddsPortalPassword);
+            await page.waitFor(1000);
             await Promise.all([
+                page.waitForNavigation({waitUntil: 'domcontentloaded'}),
                 page.click('#col-content > div:nth-child(3) > div > form > div:nth-child(3) > button'),
-                page.waitForNavigation({waitUntil: 'domcontentloaded'})
             ]);
             // Change time zone if needed
             const timeZoneCheck = await page.evaluate(() => {
@@ -55,11 +56,13 @@ const {Cluster} = require('puppeteer-cluster');
             const pages = await page.evaluate(() => {
                 if (document.querySelector('#pagination')) {
                     return document.querySelector('#pagination').lastChild.getAttribute('x-page');
+                } else {
+                    return false;
                 }
             });
 
             let result = [];
-            if (pages === undefined) {
+            if (pages === false) {
                 await parsingData(page, config, result);
             } else {
                 for (let i = 1; i <= pages; i++) {

@@ -24,9 +24,10 @@ const json2xls = require('json2xls');
         // Login data
         await page.type('#login-username1', oddsPortalUsername);
         await page.type('#login-password1', oddsPortalPassword);
+        await page.waitFor(1000);
         await Promise.all([
+            page.waitForNavigation({waitUntil: 'domcontentloaded'}),
             page.click('#col-content > div:nth-child(3) > div > form > div:nth-child(3) > button'),
-            page.waitForNavigation({waitUntil: 'domcontentloaded'})
         ]);
         // Change time zone if needed
         const timeZoneCheck = await page.evaluate(() => {
