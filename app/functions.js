@@ -1,4 +1,6 @@
 const request = require('request');
+const fs = require('fs');
+const json2xls = require('json2xls');
 
 async function parsingData(page, config, result) {
     const scrappedData = await page.evaluate((config) => {
@@ -82,7 +84,7 @@ async function parsingData(page, config, result) {
     }
 }
 
-async function askPinnacle(resultData, callback) {
+async function askPinnacle(resultData, callback, onlyBets) {
     let fromDate;
     (function setFromDate() {
         const date = new Date();
@@ -130,15 +132,37 @@ async function askPinnacle(resultData, callback) {
     };
 
     let runningBets;
-    const betsCallback = (error, response, body) => {
-        if (!error && response.statusCode == 200) {
-            const data = JSON.parse(body);
-            // apiResponse.balance = data.availableBalance;
-            // apiResponse.currency = data.currency;
-            runningBets = data.straightBets;
-            request(options.fixtures, fixturesCallback);
-        } else {
-            throw new Error(error);
+    let betsCallback;
+    if (onlyBets) {
+        betsCallback = (error, response, body) => {
+            if (!error && response.statusCode == 200) {
+                const data = JSON.parse(body);
+                runningBets = data.straightBets;
+                const xls = json2xls(runningBets);
+                const date = new Date().toISOString();
+                fs.exists('./logs/bets/', exists => {
+                    if (exists) {
+                        fs.appendFileSync(`./logs/bets/${date}.xlsx`, xls);
+                    } else {
+                        fs.mkdirSync('./logs/bets');
+                        fs.appendFileSync(`./logs/bets/${date}.xlsx`, xls);
+                    }
+                });
+                console.log(`logs/bets/${date}.xlsx written`);
+                callback(runningBets);
+            } else {
+                throw new Error(error);
+            }
+        }
+    } else {
+        betsCallback = (error, response, body) => {
+            if (!error && response.statusCode == 200) {
+                const data = JSON.parse(body);
+                runningBets = data.straightBets;
+                request(options.fixtures, fixturesCallback);
+            } else {
+                throw new Error(error);
+            }
         }
     }
 
@@ -149,7 +173,7 @@ async function askPinnacle(resultData, callback) {
                 for (let el of element.events) {
                     if (el.home.includes(apiResponse.home) && el.away.includes(apiResponse.away)) { //фильтруем по имени команд
                         if (el.resultingUnit === 'Regular' && !("parentId" in el)) { //оставляем только родительский regular матч
-                            let checkBets = runningBets.some(bet => bet.eventId === el.id);
+                            let checkBets = runningBets.some(bet => bet.eventId === el.id && bet.leagueId === element.id);
                             if (!checkBets) {
                                 apiResponse.event = el.id;
                                 apiResponse.league = element.id;

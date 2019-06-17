@@ -1,7 +1,6 @@
 const config = require('../config.js');
 const prompts = require('prompts');
 const fsp = require('fs').promises;
-const beautify = require("json-beautify");
 const {
     parsingData,
     askPinnacle
@@ -96,12 +95,12 @@ const json2xls = require('json2xls');
 
         //ask api for IDs
         let apiResponse = [];
-        await result.forEach(elem => {
+        await result.forEach(elem => { //ask for fresh api data
             askPinnacle(elem, data => {
                 if (data !== null) {
                     apiResponse.push(data);
                 }
-            });
+            }, false);
         });
         await console.log(apiResponse);
 
@@ -367,7 +366,9 @@ const json2xls = require('json2xls');
                 console.log('event unbettable, skip')
             }
         }
-        // await browser.close();
-        console.log(`FINISH`);
+        await console.log(`FINISH`);
+        //write a fresh betlog
+        // askPinnacle(result[0], data => {}, true); //true - only ask for bets
+        await browser.close();
     }
 })();
