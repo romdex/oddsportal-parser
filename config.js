@@ -44,19 +44,39 @@ const userQuestions = [
     {
         type: 'number',
         name: 'oddsFilter',
-        message: 'по какому коэффициенту фильтровать? (0=off)',
+        message: 'по какому коэффициенту фильтровать? [0=off]',
         initial: 0.0,
         float: true,
     },
     {
-        type: 'number',
+        type: 'select',
         name: 'risk',
-        message: 'average bet (%)'
+        message: 'Average bet:',
+        choices: [
+          { title: '15%', value: 2 },
+          { title: '10%', value: 3 },
+          { title: '7.5%', value: 4 },
+          { title: '6%', value: 5 },
+          { title: '5%', value: 6 },
+          { title: '4%', value: 8 },
+          { title: '3%', value: 10 },
+          { title: '2.5%', value: 12 },
+          { title: '2%', value: 15 },
+          { title: '1.5%', value: 20 },
+          { title: '1%', value: 30 },
+          { title: '0.5%', value: 60 }
+        ],
+        initial: 1
     },
     {
         type: 'number',
         name: 'edge',
         message: 'ROI (%)'
+    },
+    {
+        type: 'number',
+        name: 'timeout',
+        message: 'Таймаут (минут) повторного запуска [0=off]'
     },
     {
         type: 'confirm',

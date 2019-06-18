@@ -143,7 +143,7 @@ async function askPinnacle(resultData, callback, authHash) {
                         leagueId: 0
                     }];
                 }
-                console.log(runningBets);
+                // console.log(runningBets);
                 request(options.fixtures, fixturesCallback);
             } else {
                 throw new Error(error);

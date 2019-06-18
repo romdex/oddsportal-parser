@@ -11,7 +11,7 @@ const Base64 = require('js-base64').Base64;
 const beautify = require('json-beautify');
 
 
-(async () => {
+async function main() {
     const userResponse = await prompts(config.userQuestions);
     const profilesForParsing = userResponse.usernameForParsing.split(',');
 
@@ -79,12 +79,12 @@ const beautify = require('json-beautify');
             // const xls = await json2xls(result);
             try {
                 // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
-                await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+                // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
             } catch (e) {
                 if (e.code === 'ENOENT') {
                     // await fsp.mkdir('logs');
                     // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
-                    await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+                    // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
                 } else {
                     console.error(e);
                 }
@@ -122,7 +122,7 @@ const beautify = require('json-beautify');
             const risk = userResponse.risk;
             const edge = userResponse.edge;
             const bank = userResponse.bank;
-            console.log(`bank: ${userResponse.bank}\ncurrent odds: ${odds}`);
+            console.log(`bank: ${userResponse.bank}\ncurrent odds: ${odds}, risk: ${risk}, edge: ${edge}`);
 
             let betSizePercent =
                 Math.log10(1 - (1 / (odds / (1 + (edge / 100))))) /
@@ -131,8 +131,10 @@ const beautify = require('json-beautify');
             if (isNaN(betSizePercent)) {
                 betSizePercent = 0;
             }
-            userResponse.bank -= (betSizePercent * bank);
-            return (betSizePercent * bank).toFixed(1);
+            let result = (betSizePercent * bank).toFixed(1);
+            
+            userResponse.bank -= parseFloat(result);
+            return result;
         }
         async function placeBet(page, odds) {
             const minBet = 65;
@@ -144,7 +146,7 @@ const beautify = require('json-beautify');
                 }
                 await page.waitForSelector('#stake-field');
                 await page.click('#stake-field', { delay: 500 });
-                await page.type('#stake-field', betAmount);
+                // await page.type('#stake-field', betAmount);
 
                 await page.waitForSelector('.place-bets-button');
                 // await page.click('.place-bets-button', { delay: 500 });
@@ -385,4 +387,9 @@ const beautify = require('json-beautify');
         // askPinnacle(result[0], data => {}, true); //true - only ask for bets
         await browser.close();
     }
-})();
+    if (userResponse.timeout > 0) {
+        console.log(`restarting in ${userResponse.timeout} minutes`);
+        setTimeout(main, (userResponse.timeout * 60000));
+    }
+};
+main();
