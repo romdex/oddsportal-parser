@@ -1,4 +1,4 @@
-const config = require('./config');
+const config = require('../config');
 const prompts = require('prompts');
 const fsp = require('fs').promises;
 const {
