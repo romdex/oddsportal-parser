@@ -84,7 +84,7 @@ async function parsingData(page, config, result) {
     }
 }
 
-async function askPinnacle(resultData, callback, onlyBets) {
+async function askPinnacle(resultData, callback, authHash) {
     let fromDate;
     (function setFromDate() {
         const date = new Date();
@@ -98,23 +98,23 @@ async function askPinnacle(resultData, callback, onlyBets) {
         fromDate = fromDate.toISOString().replace(/[.].../, '');
     })();
     const currentDate = new Date().toISOString().replace(/[.].../, '');
-    const options = {
+    const options = { //QU8xMDUxODk2OlNwZHVmNWd5QA==
         balance: {
             url: 'https://api.pinnacle.com/v1/client/balance',
             headers: {
-                'Authorization': `Basic QU8xMDUxODk2OlNwZHVmNWd5QA==`
+                'Authorization': `Basic ${authHash}`
             }
         },
         fixtures: {
             url: `https://api.pinnacle.com/v1/fixtures?sportId=${resultData.sportId}&isLive=0`,
             headers: {
-                'Authorization': `Basic QU8xMDUxODk2OlNwZHVmNWd5QA==`
+                'Authorization': `Basic ${authHash}`
             }
         },
         runningBets: {
             url: `https://api.pinnacle.com/v3/bets?betlist=RUNNING&fromDate=${fromDate}&toDate=${currentDate}`,
             headers: {
-                'Authorization': `Basic QU8xMDUxODk2OlNwZHVmNWd5QA==`
+                'Authorization': `Basic ${authHash}`
             }
         },
     }
@@ -132,39 +132,24 @@ async function askPinnacle(resultData, callback, onlyBets) {
     };
 
     let runningBets;
-    let betsCallback;
-    if (onlyBets) {
-        betsCallback = (error, response, body) => {
+    const betsCallback = (error, response, body) => {
             if (!error && response.statusCode == 200) {
                 const data = JSON.parse(body);
-                runningBets = data.straightBets;
-                const xls = json2xls(runningBets);
-                const date = new Date().toISOString();
-                fs.exists('./logs/bets/', exists => {
-                    if (exists) {
-                        fs.appendFileSync(`./logs/bets/${date}.xlsx`, xls);
-                    } else {
-                        fs.mkdirSync('./logs/bets');
-                        fs.appendFileSync(`./logs/bets/${date}.xlsx`, xls);
-                    }
-                });
-                console.log(`logs/bets/${date}.xlsx written`);
-                callback(runningBets);
-            } else {
-                throw new Error(error);
-            }
-        }
-    } else {
-        betsCallback = (error, response, body) => {
-            if (!error && response.statusCode == 200) {
-                const data = JSON.parse(body);
-                runningBets = data.straightBets;
+                if ('straightBets' in data) {
+                    runningBets = data.straightBets;
+                } else {
+                    runningBets = [{
+                        eventId: 0,
+                        leagueId: 0
+                    }];
+                }
+                console.log(runningBets);
                 request(options.fixtures, fixturesCallback);
             } else {
                 throw new Error(error);
             }
         }
-    }
+
 
     const fixturesCallback = (error, response, body) => {
         if (!error && response.statusCode == 200) {

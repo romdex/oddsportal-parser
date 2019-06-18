@@ -27,9 +27,26 @@ const userQuestions = [
         message: 'Пароль на Oddsportal'
     },
     {
+        type: 'text',
+        name: 'pinnacleUser',
+        message: 'Имя пользователя на pinnacle'
+    },
+    {
+        type: 'password',
+        name: 'pinnaclePassword',
+        message: 'Пароль на pinnacle'
+    },
+    {
         type: 'number',
         name: 'bank',
-        message: 'Какой банк доступен на пиннакле сейчас'
+        message: 'Какой банк доступен на пиннакле сейчас?'
+    },
+    {
+        type: 'number',
+        name: 'oddsFilter',
+        message: 'по какому коэффициенту фильтровать? (0=off)',
+        initial: 0.0,
+        float: true,
     },
     {
         type: 'number',
@@ -40,6 +57,12 @@ const userQuestions = [
         type: 'number',
         name: 'edge',
         message: 'ROI (%)'
+    },
+    {
+        type: 'confirm',
+        name: 'headless',
+        message: 'скрывать окно браузера?',
+        initial: false
     }
 ];
 

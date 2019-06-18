@@ -1,4 +1,4 @@
-const config = require('../config.js');
+const config = require('./config');
 const prompts = require('prompts');
 const fsp = require('fs').promises;
 const {
@@ -7,6 +7,9 @@ const {
 } = require('./functions.js');
 const puppeteer = require('puppeteer');
 const json2xls = require('json2xls');
+const Base64 = require('js-base64').Base64;
+const beautify = require('json-beautify');
+
 
 (async () => {
     const userResponse = await prompts(config.userQuestions);
@@ -20,7 +23,7 @@ const json2xls = require('json2xls');
         const timeZone = 'https://www.oddsportal.com/set-timezone/31/';
 
         const browser = await puppeteer.launch({
-            headless: false
+            headless: userResponse.headless
         });
         const page = await browser.newPage();
         // Login
@@ -73,15 +76,15 @@ const json2xls = require('json2xls');
 
         if (result.length) {
             result = await result.flat();
-            const xls = await json2xls(result);
+            // const xls = await json2xls(result);
             try {
-                await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
-                // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+                // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
+                await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
             } catch (e) {
                 if (e.code === 'ENOENT') {
-                    await fsp.mkdir('logs');
-                    await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
-                    // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+                    // await fsp.mkdir('logs');
+                    // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
+                    await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
                 } else {
                     console.error(e);
                 }
@@ -93,6 +96,16 @@ const json2xls = require('json2xls');
         //PINNACLE//
         ////////////
 
+        const pinnacle = {
+            loginUrl: 'https://beta.pinnacle.com/en/login',
+            username: userResponse.pinnacleUser,
+            password: userResponse.pinnaclePassword,
+            loginField: '#loginMvc > form > div > div.loginContainer > div.loginFormInputs > div:nth-child(2) > div.loginInput > input',
+            passField: '#loginMvc > form > div > div.loginContainer > div.loginFormInputs > div:nth-child(3) > div.loginInput > input',
+            notFoundContainer: 'body > div.max-1500.clearfix > div > div.main-content > div > div.middleArea > div > div.main-view > div > ps-not-found-page',
+        };
+        pinnacle.authHash = Base64.encode(`${pinnacle.username}:${pinnacle.password}`);
+        console.log(`#: ${pinnacle.authHash}`);
         //ask api for IDs
         let apiResponse = [];
         await result.forEach(elem => { //ask for fresh api data
@@ -100,18 +113,10 @@ const json2xls = require('json2xls');
                 if (data !== null) {
                     apiResponse.push(data);
                 }
-            }, false);
+            }, pinnacle.authHash);
         });
         await console.log(apiResponse);
 
-        const pinnacle = {
-            loginUrl: 'https://beta.pinnacle.com/en/login',
-            username: 'AO1051896',
-            password: 'Spduf5gy@',
-            loginField: '#loginMvc > form > div > div.loginContainer > div.loginFormInputs > div:nth-child(2) > div.loginInput > input',
-            passField: '#loginMvc > form > div > div.loginContainer > div.loginFormInputs > div:nth-child(3) > div.loginInput > input',
-            notFoundContainer: 'body > div.max-1500.clearfix > div > div.main-content > div > div.middleArea > div > div.main-view > div > ps-not-found-page',
-        }
         //FUNCTIONS JS
         async function updateBetSize(odds) {
             const risk = userResponse.risk;
@@ -130,15 +135,22 @@ const json2xls = require('json2xls');
             return (betSizePercent * bank).toFixed(1);
         }
         async function placeBet(page, odds) {
-            if (odds >= 1.6) {
-                const betAmount = await updateBetSize(odds);
+            const minBet = 65;
+            if (odds >= userResponse.oddsFilter) {
+                let betAmount = await updateBetSize(odds);
+                if (betAmount < minBet) {
+                    console.log(`ERR! minimum bet: ${minBet}`);
+                    betAmount = `${minBet}`;
+                }
                 await page.waitForSelector('#stake-field');
+                await page.click('#stake-field', { delay: 500 });
                 await page.type('#stake-field', betAmount);
 
                 await page.waitForSelector('.place-bets-button');
+                // await page.click('.place-bets-button', { delay: 500 });
                 await console.log(`READY TO BET ${betAmount} RUB`);
             } else {
-                await console.log(`odds are lesser than 1.6, skip`);
+                await console.log(`odds are less than ${userResponse.oddsFilter}, skip`);
             }
         }
         async function bet1X2(page, pick) {
@@ -153,23 +165,25 @@ const json2xls = require('json2xls');
             await placeBet(page, currentOdds);
         }
         async function betDNB(page, pick, id) {
+            console.log(`looking in - /#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span/`)
             let currentOdds = await page.evaluate((pick, id) => {
-                let pinOdds = document.querySelector(`${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
+                let pinOdds = document.querySelector(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
                 parseFloat(pinOdds.trim());
                 return pinOdds;
             }, pick, id);
-            await page.click(`${id} > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div`, {
+            await page.click(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div`, {
                 delay: 500
             });
             await placeBet(page, currentOdds);
         }
         async function betDC(page, pick) {
+            console.log(`looking in - /${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span/`)
             let currentOdds = await page.evaluate((pick) => {
-                let pinOdds = document.querySelector(`${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
+                let pinOdds = document.querySelector(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
                 parseFloat(pinOdds.trim());
                 return pinOdds;
             }, pick);
-            await page.click(`${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div`, {
+            await page.click(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div`, {
                 delay: 500
             });
             await placeBet(page, currentOdds);
@@ -226,7 +240,7 @@ const json2xls = require('json2xls');
                         //find betting container
                         let containerId = await page.evaluate(() => {
                             const ROWS = document.querySelector('ps-event-page > div > div.panel.panel-default > div.panel-body > div:nth-child(9)').children.length;
-                            for (let i = 0; i < ROWS; i++) {
+                            for (let i = 1; i <= ROWS; i++) {
                                 let rowName = document.querySelector(`ps-event-page > div > div.panel.panel-default > div.panel-body > div:nth-child(9) > div:nth-child(${i}) > div.panel-heading.panel-collapsible > span:nth-child(2)`).innerText;
                                 if (rowName.includes('DRAW NO BET')) {
                                     let id = document.querySelector(`ps-event-page > div > div.panel.panel-default > div.panel-body > div:nth-child(9) > div:nth-child(${i}) > div.collapsed.in`).getAttribute('id');
@@ -246,7 +260,7 @@ const json2xls = require('json2xls');
                         //find betting container
                         let containerId = await page.evaluate(() => {
                             const ROWS = document.querySelector('ps-event-page > div > div.panel.panel-default > div.panel-body > div:nth-child(9)').children.length;
-                            for (let i = 0; i < ROWS; i++) {
+                            for (let i = 1; i <= ROWS; i++) {
                                 let rowName = document.querySelector(`ps-event-page > div > div.panel.panel-default > div.panel-body > div:nth-child(9) > div:nth-child(${i}) > div.panel-heading.panel-collapsible > span:nth-child(2)`).innerText;
                                 if (rowName.includes('DOUBLE CHANCE')) {
                                     let id = document.querySelector(`ps-event-page > div > div.panel.panel-default > div.panel-body > div:nth-child(9) > div:nth-child(${i}) > div.collapsed.in`).getAttribute('id');
