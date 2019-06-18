@@ -44,9 +44,16 @@ const userQuestions = [
     {
         type: 'number',
         name: 'oddsFilter',
-        message: 'по какому коэффициенту фильтровать? [0=off]',
+        message: 'нижняя граница коэффициента [0=off]',
         initial: 0.0,
         float: true,
+    },
+    {
+        type: 'number',
+        name: 'oddsFilterMax',
+        message: 'верхняя граница коэффициента [99=off]',
+        float: true,
+        initial: 14.9,
     },
     {
         type: 'select',

@@ -79,12 +79,12 @@ const beautify = require('json-beautify');
                 // const xls = await json2xls(result);
                 try {
                     // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
-                    // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+                    await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
                 } catch (e) {
                     if (e.code === 'ENOENT') {
-                        // await fsp.mkdir('logs');
+                        await fsp.mkdir('logs');
                         // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
-                        // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
+                        await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
                     } else {
                         console.error(e);
                     }
@@ -138,7 +138,7 @@ const beautify = require('json-beautify');
             }
             async function placeBet(page, odds) {
                 const minBet = 65;
-                if (odds >= userResponse.oddsFilter) {
+                if (odds >= userResponse.oddsFilter && odds <= userResponse.oddsFilterMax) {
                     let betAmount = await updateBetSize(odds);
                     if (betAmount < minBet) {
                         console.log(`ERR! minimum bet: ${minBet}`);
@@ -146,11 +146,11 @@ const beautify = require('json-beautify');
                     }
                     await page.waitForSelector('#stake-field');
                     await page.click('#stake-field', { delay: 500 });
-                    // await page.type('#stake-field', betAmount);
+                    await page.type('#stake-field', betAmount);
     
                     await page.waitForSelector('.place-bets-button');
-                    // await page.click('.place-bets-button', { delay: 500 });
-                    await console.log(`READY TO BET ${betAmount} RUB`);
+                    await page.click('.place-bets-button', { delay: 500 });
+                    await console.log(`PLACED BET ${betAmount} RUB`);
                 } else {
                     await console.log(`odds are less than ${userResponse.oddsFilter}, skip`);
                 }
