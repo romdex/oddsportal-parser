@@ -19,10 +19,13 @@ async function interval(userResponse, profilesForParsing) {
         const oddsPortalLogin = 'https://www.oddsportal.com/login/';
         const oddsPortalUsername = `${userResponse.oddsPortalUsername}`;
         const oddsPortalPassword = `${userResponse.oddsPortalPassword}`;
-        const timeZone = 'https://www.oddsportal.com/set-timezone/31/';
+        // const timeZone = 'https://www.oddsportal.com/set-timezone/31/';
+        const oddsportalCookieTimeZone = {name: "op_user_time_zone", value: "0", url: "https://www.oddsportal.com/"};
+        const oddsportalCookieFullTimeZone = {name: "op_user_full_time_zone", value: "31", url: "https://www.oddsportal.com/"};
 
         const browser = await puppeteer.launch({headless: userResponse.headless});
         const page = await browser.newPage();
+        await page.setCookie(oddsportalCookieTimeZone,oddsportalCookieFullTimeZone);
         // Login
         await page.goto(oddsPortalLogin, {waitUntil: 'domcontentloaded'});
         // Login data
@@ -33,14 +36,14 @@ async function interval(userResponse, profilesForParsing) {
             page.waitForNavigation({waitUntil: 'domcontentloaded'}),
             page.click('#col-content > div:nth-child(3) > div > form > div:nth-child(3) > button'),
         ]);
-        // Change time zone if needed
-        const timeZoneCheck = await page.evaluate(() => {
-            const currentTimeZone = document.querySelector('#user-header-timezone-expander > span');
-            return currentTimeZone.textContent.includes('GMT 0');
-        });
-        if (!timeZoneCheck) {
-            await page.goto(timeZone, {waitUntil: 'domcontentloaded'});
-        }
+            // Change time zone if needed
+            // const timeZoneCheck = await page.evaluate(() => {
+            //     const currentTimeZone = document.querySelector('#user-header-timezone-expander > span');
+            //     return currentTimeZone.textContent.includes('GMT 0');
+            // });
+            // if (!timeZoneCheck) {
+            //     await page.goto(timeZone, {waitUntil: 'domcontentloaded'});
+            // }
         // Go to Odds Profile
         await page.goto(oddsPortalProfile, {waitUntil: 'domcontentloaded'});
         // Check pagination
