@@ -10,6 +10,10 @@ const json2xls = require('json2xls');
     const userResponse = await prompts(config.userQuestions);
     const profilesForParsing = userResponse.usernameForParsing.split(',');
 
+    await interval(userResponse, profilesForParsing);
+})();
+
+async function interval(userResponse, profilesForParsing) {
     for (let i = 0; i < profilesForParsing.length; i++) {
         const oddsPortalProfile = `https://www.oddsportal.com/profile/${profilesForParsing[i].trim()}/my-predictions/next/`;
         const oddsPortalLogin = 'https://www.oddsportal.com/login/';
@@ -17,7 +21,7 @@ const json2xls = require('json2xls');
         const oddsPortalPassword = `${userResponse.oddsPortalPassword}`;
         const timeZone = 'https://www.oddsportal.com/set-timezone/31/';
 
-        const browser = await puppeteer.launch({headless: false});
+        const browser = await puppeteer.launch({headless: userResponse.headless});
         const page = await browser.newPage();
         // Login
         await page.goto(oddsPortalLogin, {waitUntil: 'domcontentloaded'});
@@ -59,8 +63,8 @@ const json2xls = require('json2xls');
         }
 
         if (result.length) {
-            result = await result.flat();
-            const xls = await json2xls(result);
+            result = result.flat();
+            const xls = json2xls(result);
             try {
                 await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
                 // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
@@ -77,4 +81,9 @@ const json2xls = require('json2xls');
         console.log(`${profilesForParsing[i].trim()} parsed`);
         await browser.close();
     }
-})();
+    if (userResponse.timeout > 0) {
+        setTimeout(async () => {
+            await interval(userResponse, profilesForParsing);
+        }, userResponse.timeout * 60000);
+    }
+}

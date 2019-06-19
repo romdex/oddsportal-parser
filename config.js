@@ -25,6 +25,17 @@ const userQuestions = [
         type: 'password',
         name: 'oddsPortalPassword',
         message: 'Пароль на Oddsportal'
+    },
+    {
+        type: 'number',
+        name: 'timeout',
+        message: 'Таймаут (минут) повторного запуска [0=off]'
+    },
+    {
+        type: 'confirm',
+        name: 'headless',
+        message: 'скрывать окно браузера?',
+        initial: false
     }
 ];
 
