@@ -1,6 +1,4 @@
 const request = require('request');
-const fs = require('fs');
-const json2xls = require('json2xls');
 
 async function parsingData(page, config, result) {
     const scrappedData = await page.evaluate((config) => {
@@ -61,12 +59,13 @@ async function parsingData(page, config, result) {
             // Winner pick
             let pick = [];
             for (let i = 0; i < pickCells.length; i++) {
-                pick.push(null);
+                pick.push(0);
                 if (pickCells[i].hasAttribute('xparam')) {
-                    pick[i] = pickCells[i].innerText;
+                    pick[i] = 1;
                 }
             }
             data.push({
+                "sportName": sportName,
                 "sportId": sportId,
                 "leagueLocation": leagueLocation,
                 "leagueName": leagueName,

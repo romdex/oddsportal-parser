@@ -75,8 +75,8 @@ const beautify = require('json-beautify');
             }
     
             if (result.length) {
-                result = await result.flat();
-                // const xls = await json2xls(result);
+                result = result.flat();
+                // const xls = json2xls(result);
                 try {
                     // await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.xlsx`, xls, 'binary');
                     await fsp.writeFile(`logs/${profilesForParsing[i].trim()}.json`, beautify(result, null, 2, 100));
@@ -108,14 +108,14 @@ const beautify = require('json-beautify');
             console.log(`#: ${pinnacle.authHash}`);
             //ask api for IDs
             let apiResponse = [];
-            await result.forEach(elem => { //ask for fresh api data
+            result.forEach(elem => { //ask for fresh api data
                 askPinnacle(elem, data => {
                     if (data !== null) {
                         apiResponse.push(data);
                     }
                 }, pinnacle.authHash);
             });
-            await console.log(apiResponse);
+            console.log(apiResponse);
     
             //FUNCTIONS JS
             async function updateBetSize(odds) {
@@ -150,9 +150,9 @@ const beautify = require('json-beautify');
     
                     await page.waitForSelector('.place-bets-button');
                     await page.click('.place-bets-button', { delay: 500 });
-                    await console.log(`PLACED BET ${betAmount} RUB`);
+                    console.log(`PLACED BET ${betAmount} RUB`);
                 } else {
-                    await console.log(`odds are less than ${userResponse.oddsFilter}, skip`);
+                    console.log(`odds are less than ${userResponse.oddsFilter}, skip`);
                 }
             }
             async function bet1X2(page, pick) {
@@ -215,11 +215,11 @@ const beautify = require('json-beautify');
                     //actions for 1х2
                     if (apiResponse[n].betType === '1X2') {
                         if (await page.$('#moneyline-0') !== null) { //check if possible
-                            if (apiResponse[n].pick[0] === 'PICK') {
+                            if (apiResponse[n].pick[0] === 1) {
                                 await bet1X2(page, 1);
-                            } else if (apiResponse[n].pick[1] === 'PICK') {
+                            } else if (apiResponse[n].pick[1] === 1) {
                                 await bet1X2(page, 2);
-                            } else if (apiResponse[n].pick[2] === 'PICK') {
+                            } else if (apiResponse[n].pick[2] === 1) {
                                 await bet1X2(page, 3);
                             } else {
                                 throw new Error(`no valid 1X2 bet found`);
@@ -231,7 +231,7 @@ const beautify = require('json-beautify');
                     //actions for h/a
                     if (apiResponse[n].betType === 'H/A') {
                         if (await page.$('#moneyline-0') !== null) { //check if possible
-                            apiResponse[n].pick[0] === 'PICK' ? await bet1X2(page, 1) : await bet1X2(page, 2);
+                            apiResponse[n].pick[0] === 1 ? await bet1X2(page, 1) : await bet1X2(page, 2);
                         } else {
                             console.log('pinnacle does not offer this type of bet');
                         }
@@ -251,7 +251,7 @@ const beautify = require('json-beautify');
                                 }
                             });
                             //place bet
-                            apiResponse[n].pick[0] === 'PICK' ? await betDNB(page, 1, containerId) : await betDNB(page, 2, containerId);
+                            apiResponse[n].pick[0] === 1 ? await betDNB(page, 1, containerId) : await betDNB(page, 2, containerId);
                         } else {
                             console.log(`pinnacle does not offer this type of bet`);
                         }
@@ -271,21 +271,21 @@ const beautify = require('json-beautify');
                                 }
                             });
                             //place bet
-                            if (apiResponse[n].pick[0] === 'PICK') { //pick-1: tr=1 td=1, pick-2: tr=2 td=1, pick-3: tr=1 td=2
+                            if (apiResponse[n].pick[0] === 1) { //pick-1: tr=1 td=1, pick-2: tr=2 td=1, pick-3: tr=1 td=2
                                 const pick = {
                                     id: containerId,
                                     tr: 1,
                                     td: 1
                                 };
                                 await betDC(page, pick);
-                            } else if (apiResponse[n].pick[1] === 'PICK') {
+                            } else if (apiResponse[n].pick[1] === 1) {
                                 const pick = {
                                     id: containerId,
                                     tr: 2,
                                     td: 1
                                 };
                                 await betDC(page, pick);
-                            } else if (apiResponse[n].pick[2] === 'PICK') {
+                            } else if (apiResponse[n].pick[2] === 1) {
                                 const pick = {
                                     id: containerId,
                                     tr: 1,
@@ -301,7 +301,7 @@ const beautify = require('json-beautify');
                     if (apiResponse[n].betType.includes('AH')) {
                         if (await page.$('#handicap-0') !== null) { //check if handicap bet is possible
                             const betValue = apiResponse[n].betType.match(/(?<![A-Za-z])-?\+?\d*\.?\d+(?![A-Za-z])/);
-                            const team = apiResponse[n].pick[0] === 'PICK' ? 1 : 2;
+                            const team = apiResponse[n].pick[0] === 1 ? 1 : 2;
                             const type = '#handicap-0';
                             console.log(`type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
     
@@ -327,7 +327,7 @@ const beautify = require('json-beautify');
                             }, betValue, team, type);
     
                             if (betBtn !== undefined) {
-                                await console.log(betBtn);
+                                console.log(betBtn);
                                 await page.click(betBtn.selector, {
                                     delay: 500
                                 });
@@ -343,7 +343,7 @@ const beautify = require('json-beautify');
                     if (apiResponse[n].betType.includes('O/U')) {
                         if (await page.$('#total-0') !== null) { //check if o/u bet is possible
                             const betValue = apiResponse[n].betType.match(/(?<![A-Za-z])-?\+?\d*\.?\d+(?![A-Za-z])/);
-                            const team = apiResponse[n].pick[0] === 'PICK' ? 1 : 2;
+                            const team = apiResponse[n].pick[0] === 1 ? 1 : 2;
                             const type = '#total-0';
                             console.log(`type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
                             //find selector and odds
@@ -366,7 +366,7 @@ const beautify = require('json-beautify');
                                 }
                             }, betValue, team, type);
                             if (betBtn !== undefined) {
-                                await console.log(betBtn);
+                                console.log(betBtn);
                                 await page.click(betBtn.selector, {
                                     delay: 500
                                 });
@@ -382,14 +382,14 @@ const beautify = require('json-beautify');
                     console.log('event unbettable, skip')
                 }
             }
-            await console.log(`FINISH`);
+            console.log(`FINISH`);
             //write a fresh betlog
             // askPinnacle(result[0], data => {}, true); //true - only ask for bets
             await browser.close();
         }
         if (userResponse.timeout > 0) {
             console.log(`restarting in ${userResponse.timeout} minutes`);
-            await setTimeout(main, (userResponse.timeout * 60000));
+            setTimeout(main, userResponse.timeout * 60000);
         }
     })();
 })();
