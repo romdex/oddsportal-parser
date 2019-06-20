@@ -222,7 +222,8 @@ const beautify = require('json-beautify');
                 console.log(apiResponse[n]);
                 //go to event page
                 await page.goto(`https://beta.pinnacle.com/en/Sports/${apiResponse[n].sportId}/Leagues/${apiResponse[n].league}/Events/${apiResponse[n].event}`, {
-                    waitUntil: 'networkidle0'
+                    waitUntil: 'networkidle0',
+                    timeout: 0,
                 });
                 //scroll the page to load everything
                 await page.evaluate(_ => {
