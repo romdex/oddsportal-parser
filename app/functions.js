@@ -167,14 +167,14 @@ async function askPinnacle(resultData, callback, authHash) {
                     && eventEl.home.includes(apiResponse.home[1])
                     && eventEl.away.includes(apiResponse.away[0])
                     && eventEl.away.includes(apiResponse.away[1])) {
-                        if (el.resultingUnit === 'Regular' && !("parentId" in el)) {
-                            let checkBets = runningBets.some(bet => bet.eventId === el.id && bet.leagueId === element.id);
+                        if (eventEl.resultingUnit === 'Regular' && !("parentId" in eventEl)) {
+                            let checkBets = runningBets.some(bet => bet.eventId === eventEl.id && bet.leagueId === leagueEl.id);
                             if (!checkBets) {
-                                apiResponse.event = el.id;
-                                apiResponse.league = element.id;
+                                apiResponse.event = eventEl.id;
+                                apiResponse.league = leagueEl.id;
                                 callback(apiResponse);
                             } else {
-                                console.log(`league/${element.id}/event/${el.id} already got placed bet, skip`);
+                                console.log(`league/${leagueEl.id}/event/${eventEl.id} already got placed bet, skip`);
                                 callback(null);
                             }
 
