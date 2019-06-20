@@ -121,14 +121,22 @@ const beautify = require('json-beautify');
             console.log(`#: ${pinnacle.authHash}`);
             //ask api for IDs
             let apiResponse = [];
-            result.forEach(elem => { //ask for fresh api data
-                askPinnacle(elem, data => {
+            for (let x = 0; x < result.length; x++) {
+                await askPinnacle(result[x], data => {
                     if (data !== null) {
+                        console.log(data);
                         apiResponse.push(data);
                     }
-                }, pinnacle.authHash);
-            });
-            // console.log(apiResponse);
+                }, pinnacle.authHash)
+            }
+            // result.forEach(elem => { //ask for fresh api data
+            //     askPinnacle(elem, data => {
+            //         if (data !== null) {
+            //             apiResponse.push(data);
+            //         }
+            //     }, pinnacle.authHash);
+            // });
+            console.log(apiResponse);
     
             //FUNCTIONS JS
             async function updateBetSize(odds) {

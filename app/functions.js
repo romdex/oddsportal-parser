@@ -128,10 +128,12 @@ async function askPinnacle(resultData, callback, authHash) {
         away: resultData.player2,
         betType: resultData.betType,
         pick: resultData.pick,
+        doubles: false,
     };
     if (apiResponse.sportId === 33) {
         apiResponse.home = apiResponse.home.match(/\w+\s?\w+(?<![A-Z])\b(?!\.)/g);
         apiResponse.away = apiResponse.away.match(/\w+\s?\w+(?<![A-Z])\b(?!\.)/g);
+        apiResponse.doubles = true;
         console.log(`MODIFIED STRINGS: ${apiResponse.home} / ${apiResponse.away}`);
         console.log(`ARRAY1: ${apiResponse.home[0]} / ${apiResponse.away[0]}`);
         console.log(`ARRAY2: ${apiResponse.home[1]} / ${apiResponse.away[1]}`);
@@ -150,24 +152,22 @@ async function askPinnacle(resultData, callback, authHash) {
                 }];
             }
             // console.log(runningBets);
-            request(options.fixtures, fixturesCallback);
+            apiResponse.doubles ? request(options.fixtures, fixturesDoublesCallback) : request(options.fixtures, fixturesCallback);
         } else {
             throw new Error(error);
         }
     }
 
-
-    const fixturesCallback = (error, response, body) => {
+    const fixturesDoublesCallback = (error, response, body) => {
         if (!error && response.statusCode == 200) {
             let data = JSON.parse(body);
-            data.league.forEach(element => {
-                for (let el of element.events) {
-                    //действия для парных матчей
-                    if (apiResponse.home[1] !== undefined) {
-                        // console.log(`HOME1: ${apiResponse.home[0]} HOME2: ${apiResponse.home[1]}\nAWAY1: ${apiResponse.away[0]} AWAY2: ${apiResponse.away[1]}`)
-                        if ((el.home.includes(apiResponse.home[0]) && el.home.includes(apiResponse.home[1])) && //фильтруем по имени команд
-                            (el.away.includes(apiResponse.away[0]) && el.away.includes(apiResponse.away[1])) &&
-                            (el.resultingUnit === 'Regular' && !("parentId" in el))) { //оставляем только родительский regular матч
+            for (let leagueEl of data.league) {
+                for (let eventEl of leagueEl.events) {
+                    if (eventEl.home.includes(apiResponse.home[0]) 
+                    && eventEl.home.includes(apiResponse.home[1])
+                    && eventEl.away.includes(apiResponse.away[0])
+                    && eventEl.away.includes(apiResponse.away[1])) {
+                        if (el.resultingUnit === 'Regular' && !("parentId" in el)) {
                             let checkBets = runningBets.some(bet => bet.eventId === el.id && bet.leagueId === element.id);
                             if (!checkBets) {
                                 apiResponse.event = el.id;
@@ -177,11 +177,25 @@ async function askPinnacle(resultData, callback, authHash) {
                                 console.log(`league/${element.id}/event/${el.id} already got placed bet, skip`);
                                 callback(null);
                             }
+
                         }
-                    } else {
-                        //действия для одиночных матчей
-                        //TODO checkBets отдельной функцией
-                        if (el.home.includes(apiResponse.home) && el.away.includes(apiResponse.away) && (el.resultingUnit === 'Regular' && !("parentId" in el))) {
+                    }
+                }
+            }
+        } else {
+            console.log(error);
+        }
+    }
+
+    const fixturesCallback = (error, response, body) => {
+        if (!error && response.statusCode == 200) {
+            let data = JSON.parse(body);
+            data.league.forEach(element => {
+                for (let el of element.events) {
+                    //действия для одиночных матчей
+                    //TODO checkBets отдельной функцией
+                    if (el.home.includes(apiResponse.home) && el.away.includes(apiResponse.away)) {
+                        if (el.resultingUnit === 'Regular' && !("parentId" in el)) {
                             let checkBets = runningBets.some(bet => bet.eventId === el.id && bet.leagueId === element.id);
                             if (!checkBets) {
                                 apiResponse.event = el.id;
@@ -196,11 +210,11 @@ async function askPinnacle(resultData, callback, authHash) {
                 }
             });
         } else {
-            throw new Error(error);
+            console.log(error);
         }
     }
     request(options.runningBets, betsCallback);
-}
+    }
 
 module.exports = {
     parsingData,
