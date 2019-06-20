@@ -131,12 +131,12 @@ async function askPinnacle(resultData, callback, authHash) {
         doubles: false,
     };
     if (apiResponse.sportId === 33) {
-        apiResponse.home = apiResponse.home.match(/\w+\s?\w+(?<![A-Z])\b(?!\.)/g);
-        apiResponse.away = apiResponse.away.match(/\w+\s?\w+(?<![A-Z])\b(?!\.)/g);
-        apiResponse.doubles = true;
+        apiResponse.home = apiResponse.home.match(/\w+\s?\-?\w+(?<![A-Z])\b(?!\.)/g);
+        apiResponse.away = apiResponse.away.match(/\w+\s?\-?\w+(?<![A-Z])\b(?!\.)/g);
         console.log(`MODIFIED STRINGS: ${apiResponse.home} / ${apiResponse.away}`);
         console.log(`ARRAY1: ${apiResponse.home[0]} / ${apiResponse.away[0]}`);
         console.log(`ARRAY2: ${apiResponse.home[1]} / ${apiResponse.away[1]}`);
+        apiResponse.home[1] === undefined ? apiResponse.doubles = false : apiResponse.doubles = true;
     }
 
     let runningBets;
