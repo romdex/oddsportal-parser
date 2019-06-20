@@ -83,7 +83,8 @@ const userQuestions = [
     {
         type: 'number',
         name: 'timeout',
-        message: 'Таймаут (минут) повторного запуска [0=off]'
+        message: 'Таймаут (минут) повторного запуска [0=off]',
+        initial: 0
     },
     {
         type: 'confirm',
