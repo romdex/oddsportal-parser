@@ -1,6 +1,7 @@
 const config = require('../config');
 const prompts = require('prompts');
 const fsp = require('fs').promises;
+const fs = require('fs');
 const {
     parsingData,
     askPinnacle
@@ -161,7 +162,8 @@ const beautify = require('json-beautify');
                     }
     
                     await page.waitForSelector('.place-bets-button');
-                    await page.click('.place-bets-button', { delay: 500 });
+                    // await page.click('.place-bets-button', { delay: 500 });
+                    console.log(`1337`);
                 } else {
                     console.log(`* odds are not in range, skip`);
                 }
