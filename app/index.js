@@ -149,15 +149,15 @@ const beautify = require('json-beautify');
                 if (isNaN(betSizePercent)) {
                     betSizePercent = 0;
                 }
-                let result = (betSizePercent * userResponse.bank).toFixed(1);
+                let result = betSizePercent * userResponse.bank;
                 return result;
             }
             async function placeBet(page, odds) {
                 if (odds >= userResponse.oddsFilter && odds <= userResponse.oddsFilterMax) {
                     let betAmount = await updateBetSize(odds);
-                    console.log(`* CALCULATED BET: ${betAmount}`)
+                    console.log(`* CALCULATED BET: ${betAmount.toFixed(2)}`)
                     await page.waitForSelector('#stake-field');
-                    await page.type('#stake-field', betAmount);
+                    await page.type('#stake-field', `${betAmount.toFixed(2)}`);
                     await page.keyboard.press('Tab');
                     await page.waitFor(500);
                     if (await page.$('div.tooltip-inner') !== null) {
@@ -166,7 +166,7 @@ const beautify = require('json-beautify');
                             tooltip.click();
                         });
                     } else {
-                        console.log(`* PLACING BET ${betAmount}`);
+                        console.log(`* PLACING BET ${betAmount.toFixed(2)}`);
                     }
                     await page.waitForSelector('.place-bets-button');
                     // await page.click('.place-bets-button', { delay: 500 });
@@ -176,7 +176,7 @@ const beautify = require('json-beautify');
             }
             async function bet1X2(page, pick) {
                 let currentOdds = await page.$eval((`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`), odds => {
-                    return parseFloat(odds.innerText.trim());
+                    return parseFloat(odds.innerText);
                 });
                 // let currentOdds = await page.evaluate((pick) => {
                 //     let pinOdds = document.querySelector(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`).innerText;
@@ -190,7 +190,7 @@ const beautify = require('json-beautify');
             }
             async function betDNB(page, pick, id) {
                 let currentOdds = await page.$eval((`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`), odds => {
-                    return parseFloat(odds.innerText.trim());
+                    return parseFloat(odds.innerText);
                 });
                 // let currentOdds = await page.evaluate((pick, id) => {
                 //     let pinOdds = document.querySelector(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
@@ -204,7 +204,7 @@ const beautify = require('json-beautify');
             }
             async function betDC(page, pick) {
                 let currentOdds = await page.$eval((`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`), odds => {
-                    return parseFloat(odds.innerText.trim());
+                    return parseFloat(odds.innerText);
                 });
                 // let currentOdds = await page.evaluate((pick) => {
                 //     let pinOdds = document.querySelector(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
