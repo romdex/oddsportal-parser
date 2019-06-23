@@ -154,7 +154,7 @@ async function askPinnacle(resultData, callback, authHash) {
             // console.log(runningBets);
             apiResponse.doubles ? request(options.fixtures, fixturesDoublesCallback) : request(options.fixtures, fixturesCallback);
         } else {
-            throw new Error(error);
+            console.log(error);
         }
     }
 
@@ -177,13 +177,18 @@ async function askPinnacle(resultData, callback, authHash) {
                                 console.log(`league/${leagueEl.id}/event/${eventEl.id} already got placed bet, skip`);
                                 callback(null);
                             }
-
                         }
                     }
                 }
             }
         } else {
             console.log(error);
+            if (error.code == 'NO_API_ACCESS') {
+                throw new Error(`ERR!code ${error.code}`)
+            }
+            if (error == 'NO_API_ACCESS') {
+                throw new Error(`ERR! ${error}`)
+            }
         }
     }
 

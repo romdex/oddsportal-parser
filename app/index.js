@@ -15,8 +15,8 @@ const beautify = require('json-beautify');
     const userResponse = await prompts(config.userQuestions);
     if (fs.existsSync('settings.json')) {
         const savedInfo = JSON.parse(fs.readFileSync('settings.json'));
-        console.log(savedInfo);
         console.log(`found settings.json, injecting...`);
+        console.log(savedInfo);
         userResponse.oddsPortalUsername = savedInfo.oddsPortalUsername;
         userResponse.oddsPortalPassword = savedInfo.oddsPortalPassword;
         userResponse.pinnacleUser = savedInfo.pinnacleUser;
@@ -136,7 +136,7 @@ const beautify = require('json-beautify');
             //         }
             //     }, pinnacle.authHash);
             // });
-            console.log(apiResponse);
+            // console.log(apiResponse);
     
             //FUNCTIONS JS
             async function updateBetSize(odds) {
@@ -168,42 +168,49 @@ const beautify = require('json-beautify');
                     } else {
                         console.log(`* PLACING BET ${betAmount}`);
                     }
-    
                     await page.waitForSelector('.place-bets-button');
                     // await page.click('.place-bets-button', { delay: 500 });
-                    console.log(`1337`);
                 } else {
                     console.log(`* odds are not in range, skip`);
                 }
             }
             async function bet1X2(page, pick) {
-                let currentOdds = await page.evaluate((pick) => {
-                    let pinOdds = document.querySelector(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`).innerText;
-                    parseFloat(pinOdds.trim());
-                    return pinOdds;
-                }, pick);
+                let currentOdds = await page.$eval((`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`), odds => {
+                    return parseFloat(odds.innerText.trim());
+                });
+                // let currentOdds = await page.evaluate((pick) => {
+                //     let pinOdds = document.querySelector(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`).innerText;
+                //     parseFloat(pinOdds.trim());
+                //     return pinOdds;
+                // }, pick);
                 await page.click(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1)`, {
                     delay: 500
                 });
                 await placeBet(page, currentOdds);
             }
             async function betDNB(page, pick, id) {
-                let currentOdds = await page.evaluate((pick, id) => {
-                    let pinOdds = document.querySelector(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
-                    parseFloat(pinOdds.trim());
-                    return pinOdds;
-                }, pick, id);
+                let currentOdds = await page.$eval((`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`), odds => {
+                    return parseFloat(odds.innerText.trim());
+                });
+                // let currentOdds = await page.evaluate((pick, id) => {
+                //     let pinOdds = document.querySelector(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
+                //     parseFloat(pinOdds.trim());
+                //     return pinOdds;
+                // }, pick, id);
                 await page.click(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div`, {
                     delay: 500
                 });
                 await placeBet(page, currentOdds);
             }
             async function betDC(page, pick) {
-                let currentOdds = await page.evaluate((pick) => {
-                    let pinOdds = document.querySelector(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
-                    parseFloat(pinOdds.trim());
-                    return pinOdds;
-                }, pick);
+                let currentOdds = await page.$eval((`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`), odds => {
+                    return parseFloat(odds.innerText.trim());
+                });
+                // let currentOdds = await page.evaluate((pick) => {
+                //     let pinOdds = document.querySelector(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
+                //     parseFloat(pinOdds.trim());
+                //     return pinOdds;
+                // }, pick);
                 await page.click(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div`, {
                     delay: 500
                 });
@@ -267,11 +274,17 @@ const beautify = require('json-beautify');
                                     if (rowName.includes('DRAW NO BET')) {
                                         let id = document.querySelector(`ps-event-page > div > div.panel.panel-default > div.panel-body > div:nth-child(9) > div:nth-child(${i}) > div.collapsed.in`).getAttribute('id');
                                         return id;
+                                    } else if (i = ROWS && !rowName.includes('DRAW NO BET')) { //return null if last row does not include DNB
+                                        return null;
                                     }
                                 }
                             });
                             //place bet
-                            apiResponse[n].pick[0] === 1 ? await betDNB(page, 1, containerId) : await betDNB(page, 2, containerId);
+                            if (containerId !== null) {
+                                apiResponse[n].pick[0] === 1 ? await betDNB(page, 1, containerId) : await betDNB(page, 2, containerId);
+                            } else {
+                                console.log(`! pinnacle does not offer this type of bet`);
+                            }
                         } else {
                             console.log(`! pinnacle does not offer this type of bet`);
                         }
@@ -287,31 +300,37 @@ const beautify = require('json-beautify');
                                     if (rowName.includes('DOUBLE CHANCE')) {
                                         let id = document.querySelector(`ps-event-page > div > div.panel.panel-default > div.panel-body > div:nth-child(9) > div:nth-child(${i}) > div.collapsed.in`).getAttribute('id');
                                         return id;
+                                    } else if (i = ROWS && !rowName.includes('DOUBLE CHANCE')) { //return null if last row does not include DC
+                                        return null;
                                     }
                                 }
                             });
                             //place bet
-                            if (apiResponse[n].pick[0] === 1) { //pick-1: tr=1 td=1, pick-2: tr=2 td=1, pick-3: tr=1 td=2
-                                const pick = {
-                                    id: containerId,
-                                    tr: 1,
-                                    td: 1
-                                };
-                                await betDC(page, pick);
-                            } else if (apiResponse[n].pick[1] === 1) {
-                                const pick = {
-                                    id: containerId,
-                                    tr: 2,
-                                    td: 1
-                                };
-                                await betDC(page, pick);
-                            } else if (apiResponse[n].pick[2] === 1) {
-                                const pick = {
-                                    id: containerId,
-                                    tr: 1,
-                                    td: 2
-                                };
-                                await betDC(page, pick);
+                            if (containerId !== null) {
+                                if (apiResponse[n].pick[0] === 1) { //pick-1: tr=1 td=1, pick-2: tr=2 td=1, pick-3: tr=1 td=2
+                                    const pick = {
+                                        id: containerId,
+                                        tr: 1,
+                                        td: 1
+                                    };
+                                    await betDC(page, pick);
+                                } else if (apiResponse[n].pick[1] === 1) {
+                                    const pick = {
+                                        id: containerId,
+                                        tr: 2,
+                                        td: 1
+                                    };
+                                    await betDC(page, pick);
+                                } else if (apiResponse[n].pick[2] === 1) {
+                                    const pick = {
+                                        id: containerId,
+                                        tr: 1,
+                                        td: 2
+                                    };
+                                    await betDC(page, pick);
+                                }
+                            } else {
+                                console.log(`! pinnacle does not offer this type of bet`);
                             }
                         } else {
                             console.log(`! pinnacle does not offer this type of bet`);
