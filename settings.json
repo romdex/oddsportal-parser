@@ -1,6 +1,14 @@
 {
-    "oddsPortalUsername": "enter_USERNAME",
-    "oddsPortalPassword": "enter_PASSWORD",
-    "pinnacleUser": "enter_USERNAME",
-    "pinnaclePassword": "enter_PASSWORD"
-}
+    "usernameForParsing": "gatekeepers, Guillemm5",
+    "oddsPortalUsername": "Username",
+    "oddsPortalPassword": "Password123",
+    "pinnacleUser": "Username",
+    "pinnaclePassword": "Password123",
+    "bank": 10000,
+    "oddsFilter": 1.3,
+    "oddsFilterMax": 3,
+    "risk": 20,
+    "edge": 3,
+    "headless": false,
+    "timeout": 0
+} 

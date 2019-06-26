@@ -16,6 +16,7 @@
     "prompts": "^2.1.0",
     "puppeteer": "^1.17.0",
     "puppeteer-cluster": "^0.16.0",
-    "request": "^2.88.0"
+    "request": "^2.88.0",
+    "request-promise-native": "^1.0.7"
   }
 }

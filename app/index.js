@@ -11,33 +11,39 @@ const json2xls = require('json2xls');
 const Base64 = require('js-base64').Base64;
 const beautify = require('json-beautify');
 
-(async function() {
-    const userResponse = await prompts(config.userQuestions);
-    if (fs.existsSync('settings.json')) {
-        const savedInfo = JSON.parse(fs.readFileSync('settings.json'));
-        console.log(`found settings.json, injecting...`);
-        console.log(savedInfo);
-        userResponse.oddsPortalUsername = savedInfo.oddsPortalUsername;
-        userResponse.oddsPortalPassword = savedInfo.oddsPortalPassword;
-        userResponse.pinnacleUser = savedInfo.pinnacleUser;
-        userResponse.pinnaclePassword = savedInfo.pinnaclePassword;
+(async function () {
+    async function buildSettings() {
+        console.log(`found settings.json`);
+        const settings = await fsp.readFile('settings.json', 'utf8');
+        console.log(JSON.parse(settings));
+        return JSON.parse(settings);
     }
+    const userResponse = fs.existsSync('settings.json') ? await buildSettings() : await prompts(config.userQuestions);
+
     const profilesForParsing = userResponse.usernameForParsing.split(',');
-    (async function main(){
+    (async function main() {
         for (let i = 0; i < profilesForParsing.length; i++) {
             const oddsPortalProfile = `https://www.oddsportal.com/profile/${profilesForParsing[i].trim()}/my-predictions/next/`;
             const oddsPortalLogin = 'https://www.oddsportal.com/login/';
             const oddsPortalUsername = `${userResponse.oddsPortalUsername}`;
             const oddsPortalPassword = `${userResponse.oddsPortalPassword}`;
             // const timeZone = 'https://www.oddsportal.com/set-timezone/31/';
-            const oddsportalCookieTimeZone = {name: "op_user_time_zone", value: "0", url: "https://www.oddsportal.com/"};
-            const oddsportalCookieFullTimeZone = {name: "op_user_full_time_zone", value: "31", url: "https://www.oddsportal.com/"};
-    
+            const oddsportalCookieTimeZone = {
+                name: "op_user_time_zone",
+                value: "0",
+                url: "https://www.oddsportal.com/"
+            };
+            const oddsportalCookieFullTimeZone = {
+                name: "op_user_full_time_zone",
+                value: "31",
+                url: "https://www.oddsportal.com/"
+            };
+
             const browser = await puppeteer.launch({
                 headless: userResponse.headless
             });
             const page = await browser.newPage();
-            await page.setCookie(oddsportalCookieTimeZone,oddsportalCookieFullTimeZone);
+            await page.setCookie(oddsportalCookieTimeZone, oddsportalCookieFullTimeZone);
             // Login
             await page.goto(oddsPortalLogin, {
                 waitUntil: 'domcontentloaded'
@@ -52,16 +58,16 @@ const beautify = require('json-beautify');
                     waitUntil: 'domcontentloaded'
                 })
             ]);
-                // // Change time zone if needed
-                // const timeZoneCheck = await page.evaluate(() => {
-                //     const currentTimeZone = document.querySelector('#user-header-timezone-expander > span');
-                //     return currentTimeZone.textContent.includes('GMT 0');
-                // });
-                // if (!timeZoneCheck) {
-                //     await page.goto(timeZone, {
-                //         waitUntil: 'domcontentloaded'
-                //     });
-                // }
+            // // Change time zone if needed
+            // const timeZoneCheck = await page.evaluate(() => {
+            //     const currentTimeZone = document.querySelector('#user-header-timezone-expander > span');
+            //     return currentTimeZone.textContent.includes('GMT 0');
+            // });
+            // if (!timeZoneCheck) {
+            //     await page.goto(timeZone, {
+            //         waitUntil: 'domcontentloaded'
+            //     });
+            // }
             // Go to Odds Profile
             await page.goto(oddsPortalProfile, {
                 waitUntil: 'domcontentloaded'
@@ -74,7 +80,7 @@ const beautify = require('json-beautify');
                     return false;
                 }
             });
-    
+
             let result = [];
             if (pages === false) {
                 await parsingData(page, config, result);
@@ -86,7 +92,7 @@ const beautify = require('json-beautify');
                     await parsingData(page, config, result);
                 }
             }
-    
+
             if (result.length) {
                 result = result.flat();
                 // const xls = json2xls(result);
@@ -104,11 +110,11 @@ const beautify = require('json-beautify');
                 }
             }
             console.log(`${profilesForParsing[i].trim()} parsed`);
-    
+
             ////////////
             //PINNACLE//
             ////////////
-    
+
             const pinnacle = {
                 loginUrl: 'https://beta.pinnacle.com/en/login',
                 username: userResponse.pinnacleUser,
@@ -137,15 +143,15 @@ const beautify = require('json-beautify');
             //     }, pinnacle.authHash);
             // });
             // console.log(apiResponse);
-    
+
             //FUNCTIONS JS
             async function updateBetSize(odds) {
                 console.log(`bank: ${userResponse.bank}\ncurrent odds: ${odds}, risk: ${userResponse.risk}, edge: ${userResponse.edge}`);
-    
+
                 let betSizePercent =
                     Math.log10(1 - (1 / (odds / (1 + (userResponse.edge / 100))))) /
                     Math.log10(Math.pow(10, -userResponse.risk));
-    
+
                 if (isNaN(betSizePercent)) {
                     betSizePercent = 0;
                 }
@@ -169,12 +175,17 @@ const beautify = require('json-beautify');
                         console.log(`* PLACING BET ${betAmount.toFixed(2)}`);
                     }
                     await page.waitForSelector('.place-bets-button');
-                    // await page.click('.place-bets-button', { delay: 500 });
+                    await page.waitFor(500);
+                    await page.click('.place-bets-button', {
+                        delay: 500
+                    });
+                    await page.waitFor(1000);
                 } else {
                     console.log(`* odds are not in range, skip`);
                 }
             }
             async function bet1X2(page, pick) {
+                await page.waitForSelector(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`);
                 let currentOdds = await page.$eval((`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`), odds => {
                     return parseFloat(odds.innerText);
                 });
@@ -189,6 +200,7 @@ const beautify = require('json-beautify');
                 await placeBet(page, currentOdds);
             }
             async function betDNB(page, pick, id) {
+                await page.waitForSelector(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`);
                 let currentOdds = await page.$eval((`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`), odds => {
                     return parseFloat(odds.innerText);
                 });
@@ -203,6 +215,7 @@ const beautify = require('json-beautify');
                 await placeBet(page, currentOdds);
             }
             async function betDC(page, pick) {
+                await page.waitForSelector(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`);
                 let currentOdds = await page.$eval((`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`), odds => {
                     return parseFloat(odds.innerText);
                 });
@@ -229,14 +242,17 @@ const beautify = require('json-beautify');
                 console.log(apiResponse[n]);
                 //go to event page
                 await page.goto(`https://beta.pinnacle.com/en/Sports/${apiResponse[n].sportId}/Leagues/${apiResponse[n].league}/Events/${apiResponse[n].event}`, {
-                    waitUntil: 'networkidle0',
-                    timeout: 0,
+                    waitUntil: 'domcontentloaded'
                 });
                 //scroll the page to load everything
                 await page.evaluate(_ => {
                     window.scrollBy(0, window.innerHeight);
                 });
-    
+                await page.waitFor(2000);
+                await page.evaluate(_ => {
+                    window.scrollBy(0, window.innerHeight);
+                });
+                await page.waitFor(1000);
                 if (await page.$(pinnacle.notFoundContainer) === null) { //check if event page was found
                     console.log(`event bettable`);
                     //actions for 1х2
@@ -343,7 +359,7 @@ const beautify = require('json-beautify');
                             const team = apiResponse[n].pick[0] === 1 ? 1 : 2;
                             const type = '#handicap-0';
                             console.log(`* type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
-    
+
                             //run findBetValue() inside a browser
                             // let betBtn = await findBetValue(page, betValue, team, type);
                             let betBtn = await page.evaluate((betValue, team, type) => {
@@ -363,7 +379,7 @@ const beautify = require('json-beautify');
                                     }
                                 }
                             }, betValue, team, type);
-    
+
                             if (betBtn !== undefined) {
                                 console.log(betBtn);
                                 await page.click(betBtn.selector, {
@@ -428,6 +444,8 @@ const beautify = require('json-beautify');
         if (userResponse.timeout > 0) {
             console.log(`restarting in ${userResponse.timeout} minutes`);
             setTimeout(main, userResponse.timeout * 60000);
+        } else {
+            process.exit(0);
         }
     })();
 })();
