@@ -163,10 +163,10 @@ async function askPinnacle(resultData, callback, authHash) {
             let data = JSON.parse(body);
             for (let leagueEl of data.league) {
                 for (let eventEl of leagueEl.events) {
-                    if (eventEl.home.includes(apiResponse.home[0]) 
-                    && eventEl.home.includes(apiResponse.home[1])
-                    && eventEl.away.includes(apiResponse.away[0])
-                    && eventEl.away.includes(apiResponse.away[1])) {
+                    if (eventEl.home.includes(apiResponse.home[0]) &&
+                        eventEl.home.includes(apiResponse.home[1]) &&
+                        eventEl.away.includes(apiResponse.away[0]) &&
+                        eventEl.away.includes(apiResponse.away[1])) {
                         if (eventEl.resultingUnit === 'Regular' && !("parentId" in eventEl)) {
                             let checkBets = runningBets.some(bet => bet.eventId === eventEl.id && bet.leagueId === leagueEl.id);
                             if (!checkBets) {
@@ -219,7 +219,7 @@ async function askPinnacle(resultData, callback, authHash) {
         }
     }
     request(options.runningBets, betsCallback);
-    }
+}
 
 module.exports = {
     parsingData,

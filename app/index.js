@@ -10,12 +10,35 @@ const puppeteer = require('puppeteer');
 const json2xls = require('json2xls');
 const Base64 = require('js-base64').Base64;
 const beautify = require('json-beautify');
+const winston = require('winston');
 
 (async function () {
+    const logger = winston.createLogger({
+        level: 'info',
+        format: winston.format.json(),
+        defaultMeta: {
+            service: 'user-service'
+        },
+        transports: [
+            //
+            // - Write to all logs with level `info` and below to `combined.log` 
+            // - Write all logs error (and below) to `error.log`.
+            //
+            new winston.transports.File({
+                filename: 'error.log',
+                level: 'error'
+            }),
+            new winston.transports.File({
+                filename: 'combined.log'
+            })
+        ]
+    });
     async function buildSettings() {
         console.log(`found settings.json`);
+        logger.info('found settings.json');
         const settings = await fsp.readFile('settings.json', 'utf8');
         console.log(JSON.parse(settings));
+        logger.info(JSON.parse(settings))
         return JSON.parse(settings);
     }
     const userResponse = fs.existsSync('settings.json') ? await buildSettings() : await prompts(config.userQuestions);
@@ -58,7 +81,7 @@ const beautify = require('json-beautify');
                     waitUntil: 'domcontentloaded'
                 })
             ]);
-            // // Change time zone if needed
+            // Change time zone if needed
             // const timeZoneCheck = await page.evaluate(() => {
             //     const currentTimeZone = document.querySelector('#user-header-timezone-expander > span');
             //     return currentTimeZone.textContent.includes('GMT 0');
@@ -110,6 +133,7 @@ const beautify = require('json-beautify');
                 }
             }
             console.log(`${profilesForParsing[i].trim()} parsed`);
+            logger.info(`${profilesForParsing[i].trim()} parsed`)
 
             ////////////
             //PINNACLE//
@@ -125,12 +149,14 @@ const beautify = require('json-beautify');
             };
             pinnacle.authHash = Base64.encode(`${pinnacle.username}:${pinnacle.password}`);
             console.log(`#: ${pinnacle.authHash}`);
+            logger.info(`#: ${pinnacle.authHash}`)
             //ask api for IDs
             let apiResponse = [];
             for (let x = 0; x < result.length; x++) {
                 await askPinnacle(result[x], data => {
                     if (data !== null) {
                         console.log(data);
+                        logger.info(data);
                         apiResponse.push(data);
                     }
                 }, pinnacle.authHash)
@@ -145,8 +171,9 @@ const beautify = require('json-beautify');
             // console.log(apiResponse);
 
             //FUNCTIONS JS
-            async function updateBetSize(odds) {
+            function updateBetSize(odds) {
                 console.log(`bank: ${userResponse.bank}\ncurrent odds: ${odds}, risk: ${userResponse.risk}, edge: ${userResponse.edge}`);
+                logger.info(`bank: ${userResponse.bank}\ncurrent odds: ${odds}, risk: ${userResponse.risk}, edge: ${userResponse.edge}`)
 
                 let betSizePercent =
                     Math.log10(1 - (1 / (odds / (1 + (userResponse.edge / 100))))) /
@@ -155,79 +182,91 @@ const beautify = require('json-beautify');
                 if (isNaN(betSizePercent)) {
                     betSizePercent = 0;
                 }
-                let result = betSizePercent * userResponse.bank;
+                let result = (betSizePercent * userResponse.bank).toFixed(2);
+                console.log(`calculated bet - ${result}`);
+                logger.info(`calculated bet - ${result}`);
                 return result;
             }
             async function placeBet(page, odds) {
                 if (odds >= userResponse.oddsFilter && odds <= userResponse.oddsFilterMax) {
-                    let betAmount = await updateBetSize(odds);
-                    console.log(`* CALCULATED BET: ${betAmount.toFixed(2)}`)
+                    let betAmount = updateBetSize(odds);
                     await page.waitForSelector('#stake-field');
-                    await page.type('#stake-field', `${betAmount.toFixed(2)}`);
+                    // await page.waitFor(1000);
+                    await page.type('#stake-field', `${betAmount}`);
                     await page.keyboard.press('Tab');
                     await page.waitFor(500);
                     if (await page.$('div.tooltip-inner') !== null) {
                         console.log(`! stake is too small, using possible minimum`);
+                        logger.info(`! stake is too small, using possible minimum`);
                         await page.$eval('div.tooltip-inner', tooltip => {
                             tooltip.click();
                         });
                     } else {
-                        console.log(`* PLACING BET ${betAmount.toFixed(2)}`);
+                        console.log(`* PLACING BET ${betAmount}`);
+                        logger.info(`* PLACING BET ${betAmount}`);
                     }
                     await page.waitForSelector('.place-bets-button');
-                    await page.waitFor(500);
+                    await page.waitFor(1000);
                     await page.click('.place-bets-button', {
                         delay: 500
                     });
+                    // console.log(`1337`);
                     await page.waitFor(1000);
                 } else {
-                    console.log(`* odds are not in range, skip`);
+                    console.log(`** odds are not in range, skip`);
+                    logger.info(`** odds are not in range, skip`);
                 }
             }
             async function bet1X2(page, pick) {
                 await page.waitForSelector(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`);
+                // await page.waitFor(1000);
                 let currentOdds = await page.$eval((`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`), odds => {
                     return parseFloat(odds.innerText);
                 });
-                // let currentOdds = await page.evaluate((pick) => {
-                //     let pinOdds = document.querySelector(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1) > ps-line > div > div.col-xs-3 > span`).innerText;
-                //     parseFloat(pinOdds.trim());
-                //     return pinOdds;
-                // }, pick);
-                await page.click(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1)`, {
-                    delay: 500
-                });
-                await placeBet(page, currentOdds);
+
+                if (currentOdds >= userResponse.oddsFilter && currentOdds <= userResponse.oddsFilterMax) {
+                    await page.click(`#moneyline-0 > ps-game-event-singles > div > table > tbody > tr > td:nth-child(${pick}) > div:nth-child(1)`, {
+                        delay: 500
+                    });
+                    await placeBet(page, currentOdds);
+                } else {
+                    console.log(`! odds are not in range, skip`);
+                    logger.info(`! odds are not in range, skip`);
+                }
             }
             async function betDNB(page, pick, id) {
                 await page.waitForSelector(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`);
+                // await page.waitFor(1000);
                 let currentOdds = await page.$eval((`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`), odds => {
                     return parseFloat(odds.innerText);
                 });
-                // let currentOdds = await page.evaluate((pick, id) => {
-                //     let pinOdds = document.querySelector(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
-                //     parseFloat(pinOdds.trim());
-                //     return pinOdds;
-                // }, pick, id);
-                await page.click(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div`, {
-                    delay: 500
-                });
-                await placeBet(page, currentOdds);
+
+                if (currentOdds >= userResponse.oddsFilter && currentOdds <= userResponse.oddsFilterMax) {
+                    await page.click(`#${id} > ps-game-event-contest > div > table > tbody > tr > td:nth-child(${pick}) > ps-contest-line > div`, {
+                        delay: 500
+                    });
+                    await placeBet(page, currentOdds);
+                } else {
+                    console.log(`! odds are not in range, skip`)
+                    logger.info(`! odds are not in range, skip`);
+                }
             }
             async function betDC(page, pick) {
                 await page.waitForSelector(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`);
+                // await page.waitFor(1000);
                 let currentOdds = await page.$eval((`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`), odds => {
                     return parseFloat(odds.innerText);
                 });
-                // let currentOdds = await page.evaluate((pick) => {
-                //     let pinOdds = document.querySelector(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div > div.col-xs-3 > span`).innerText;
-                //     parseFloat(pinOdds.trim());
-                //     return pinOdds;
-                // }, pick);
-                await page.click(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div`, {
-                    delay: 500
-                });
-                await placeBet(page, currentOdds);
+
+                if (currentOdds >= userResponse.oddsFilter && currentOdds <= userResponse.oddsFilterMax) {
+                    await page.click(`#${pick.id} > ps-game-event-contest > div > table > tbody > tr:nth-child(${pick.tr}) > td:nth-child(${pick.td}) > ps-contest-line > div`, {
+                        delay: 500
+                    });
+                    await placeBet(page, currentOdds);
+                } else {
+                    console.log(`! odds are not in range, skip`)
+                    logger.info(`! odds are not in range, skip`);
+                }
             }
             // Login        
             await page.goto(pinnacle.loginUrl, {
@@ -239,7 +278,9 @@ const beautify = require('json-beautify');
             // Placing bets
             for (let n = 0; n < apiResponse.length; n++) {
                 console.log('== CURRENT BET ==');
+                logger.info('== CURRENT BET ==');
                 console.log(apiResponse[n]);
+                logger.info(apiResponse[n]);
                 //go to event page
                 await page.goto(`https://beta.pinnacle.com/en/Sports/${apiResponse[n].sportId}/Leagues/${apiResponse[n].league}/Events/${apiResponse[n].event}`, {
                     waitUntil: 'domcontentloaded'
@@ -255,20 +296,42 @@ const beautify = require('json-beautify');
                 await page.waitFor(1000);
                 if (await page.$(pinnacle.notFoundContainer) === null) { //check if event page was found
                     console.log(`event bettable`);
+                    logger.info(`event bettable`);
+                    await page.waitFor(1000);
+                    if (await page.$('div.close') !== null) {
+                        console.log(`! active wager detected, closing...`);
+                        logger.info(`! active wager detected, closing...`);
+                        await page.$$eval('div.close', close => {
+                            close.forEach(el => el.click());
+                        });
+                    }
                     //actions for 1х2
                     if (apiResponse[n].betType === '1X2') {
                         if (await page.$('#moneyline-0') !== null) { //check if possible
-                            if (apiResponse[n].pick[0] === 1) {
-                                await bet1X2(page, 1);
-                            } else if (apiResponse[n].pick[1] === 1) {
-                                await bet1X2(page, 2);
-                            } else if (apiResponse[n].pick[2] === 1) {
-                                await bet1X2(page, 3);
+                            if (apiResponse[n].sportId === 4) { //basketball has no tie
+                                if (apiResponse[n].pick[0] === 1) {
+                                    await bet1X2(page, 1);
+                                } else if (apiResponse[n].pick[2] === 1) {
+                                    await bet1X2(page, 2);
+                                } else {
+                                    console.log(`no valid 1X2 bet found`);
+                                    logger.info(`no valid 1X2 bet found`);
+                                }
                             } else {
-                                throw new Error(`no valid 1X2 bet found`);
+                                if (apiResponse[n].pick[0] === 1) {
+                                    await bet1X2(page, 1);
+                                } else if (apiResponse[n].pick[1] === 1) {
+                                    await bet1X2(page, 2);
+                                } else if (apiResponse[n].pick[2] === 1) {
+                                    await bet1X2(page, 3);
+                                } else {
+                                    console.log(`no valid 1X2 bet found`);
+                                    logger.info(`no valid 1X2 bet found`);
+                                }
                             }
                         } else {
-                            console.log('pinnacle does not offer this type of bet');
+                            console.log('! pinnacle does not offer this type of bet');
+                            logger.info('! pinnacle does not offer this type of bet');
                         }
                     };
                     //actions for h/a
@@ -277,6 +340,7 @@ const beautify = require('json-beautify');
                             apiResponse[n].pick[0] === 1 ? await bet1X2(page, 1) : await bet1X2(page, 2);
                         } else {
                             console.log('! pinnacle does not offer this type of bet');
+                            logger.info('! pinnacle does not offer this type of bet');
                         }
                     };
                     //actions for Draw No Bet legit
@@ -300,9 +364,11 @@ const beautify = require('json-beautify');
                                 apiResponse[n].pick[0] === 1 ? await betDNB(page, 1, containerId) : await betDNB(page, 2, containerId);
                             } else {
                                 console.log(`! pinnacle does not offer this type of bet`);
+                                logger.info('! pinnacle does not offer this type of bet');
                             }
                         } else {
                             console.log(`! pinnacle does not offer this type of bet`);
+                            logger.info('! pinnacle does not offer this type of bet');
                         }
                     };
                     //actions for Double chance
@@ -347,9 +413,11 @@ const beautify = require('json-beautify');
                                 }
                             } else {
                                 console.log(`! pinnacle does not offer this type of bet`);
+                                logger.info('! pinnacle does not offer this type of bet');
                             }
                         } else {
                             console.log(`! pinnacle does not offer this type of bet`);
+                            logger.info('! pinnacle does not offer this type of bet');
                         }
                     };
                     //actions for handicap
@@ -359,7 +427,7 @@ const beautify = require('json-beautify');
                             const team = apiResponse[n].pick[0] === 1 ? 1 : 2;
                             const type = '#handicap-0';
                             console.log(`* type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
-
+                            logger.info(`* type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
                             //run findBetValue() inside a browser
                             // let betBtn = await findBetValue(page, betValue, team, type);
                             let betBtn = await page.evaluate((betValue, team, type) => {
@@ -382,15 +450,23 @@ const beautify = require('json-beautify');
 
                             if (betBtn !== undefined) {
                                 console.log(betBtn);
-                                await page.click(betBtn.selector, {
-                                    delay: 500
-                                });
-                                await placeBet(page, betBtn.odds);
+                                logger.info(betBtn);
+                                if (betBtn.odds >= userResponse.oddsFilter && betBtn.odds <= userResponse.oddsFilterMax) {
+                                    await page.click(betBtn.selector, {
+                                        delay: 500
+                                    });
+                                    await placeBet(page, betBtn.odds);
+                                } else {
+                                    console.log(`! odds are not in range, skip`);
+                                    logger.info(`! odds are not in range, skip`);
+                                }
                             } else {
                                 console.log(`! pinnacle does not offer betvalue - /${betValue}/`);
+                                logger.info(`! pinnacle does not offer betvalue - /${betValue}/`);
                             }
                         } else {
                             console.log(`! pinnacle does not offer handicap bet for this match`);
+                            logger.info(`! pinnacle does not offer handicap bet for this match`);
                         }
                     }
                     //actions for over under
@@ -400,6 +476,7 @@ const beautify = require('json-beautify');
                             const team = apiResponse[n].pick[0] === 1 ? 1 : 2;
                             const type = '#total-0';
                             console.log(`type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
+                            logger.info(`type /${type}/\nbetvalue /${betValue}/\nteam /${team}/`);
                             //find selector and odds
                             let betBtn = await page.evaluate((betValue, team, type) => {
                                 let hpdValue;
@@ -421,28 +498,39 @@ const beautify = require('json-beautify');
                             }, betValue, team, type);
                             if (betBtn !== undefined) {
                                 console.log(betBtn);
-                                await page.click(betBtn.selector, {
-                                    delay: 500
-                                });
-                                await placeBet(page, betBtn.odds);
+                                logger.info(betBtn);
+                                if (betBtn.odds >= userResponse.oddsFilter && betBtn.odds <= userResponse.oddsFilterMax) {
+                                    await page.click(betBtn.selector, {
+                                        delay: 500
+                                    });
+                                    await placeBet(page, betBtn.odds);
+                                } else {
+                                    console.log(`! odds are not in range, skip`);
+                                    logger.info(`! odds are not in range, skip`);
+                                }
                             } else {
                                 console.log(`! pinnacle does not offer betvalue - /${betValue}/`);
+                                logger.info(`! pinnacle does not offer betvalue - /${betValue}/`);
                             }
                         } else {
                             console.log(`! pinnacle does not offer over under bet for this match`);
+                            logger.info(`! pinnacle does not offer over under bet for this match`);
                         }
                     }
                 } else {
-                    console.log('! event unbettable, skip')
+                    console.log('! event unbettable, skip');
+                    logger.info('! event unbettable, skip');
                 }
             }
             console.log(`FINISH`);
+            logger.info(`FINISH`)
             //write a fresh betlog
             // askPinnacle(result[0], data => {}, true); //true - only ask for bets
             await browser.close();
         }
         if (userResponse.timeout > 0) {
             console.log(`restarting in ${userResponse.timeout} minutes`);
+            logger.info(`restarting in ${userResponse.timeout} minutes`);
             setTimeout(main, userResponse.timeout * 60000);
         } else {
             process.exit(0);
